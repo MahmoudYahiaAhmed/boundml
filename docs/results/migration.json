@@ -1,0 +1,63 @@
+{
+ "results": [
+  {
+   "framework": "pytorch",
+   "framework_version": "2.12.1+cpu",
+   "task": "binary",
+   "test_rows": 124,
+   "max_abs_diff": 1.8054784774179655e-07,
+   "tolerance": 0.0001,
+   "passed": true
+  },
+  {
+   "framework": "keras",
+   "framework_version": "3.14.0",
+   "task": "binary",
+   "test_rows": 124,
+   "max_abs_diff": 1.6211433412349763e-07,
+   "tolerance": 0.0001,
+   "passed": true
+  },
+  {
+   "framework": "pytorch",
+   "framework_version": "2.12.1+cpu",
+   "task": "regression",
+   "test_rows": 328,
+   "max_abs_diff": 1.2105102538129131e-06,
+   "tolerance": 0.0001,
+   "passed": true
+  },
+  {
+   "framework": "keras",
+   "framework_version": "3.14.0",
+   "task": "regression",
+   "test_rows": 328,
+   "max_abs_diff": 1.1786193852003635e-06,
+   "tolerance": 0.0001,
+   "passed": true
+  },
+  {
+   "framework": "pytorch",
+   "framework_version": "2.12.1+cpu",
+   "task": "multiclass",
+   "test_rows": 120,
+   "max_abs_diff": 2.0599441530322338e-07,
+   "tolerance": 0.0001,
+   "passed": true
+  },
+  {
+   "framework": "keras",
+   "framework_version": "3.14.0",
+   "task": "multiclass",
+   "test_rows": 120,
+   "max_abs_diff": 1.479354858613391e-07,
+   "tolerance": 0.0001,
+   "passed": true
+  }
+ ],
+ "negative_checks": {
+  "unsupported_layer_rejected": true,
+  "tampered_weights_rejected": true
+ },
+ "failures": []
+}
