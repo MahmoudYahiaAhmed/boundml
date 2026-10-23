@@ -1,0 +1,36 @@
+$ boundml --version
+boundml 0.1.0 (revision 6130958eba, x86_64-pc-windows-msvc)
+[exit 0, 0.14s]
+$ boundml init demo
+created example in demo:
+  demo\model.toml
+  demo\data\train.csv
+  demo\data\valid.csv
+  demo\data\test.csv
+next: boundml validate demo\model.toml
+[exit 0, 0.02s]
+$ boundml train demo/model.toml --checkpoint demo/ckpt --quiet
+training complete after 1890 steps in 0.16s; checkpoint: demo/ckpt
+final epoch: train_loss=0.03957 valid={"mae": 0.1527383494377136, "mse": 0.03658402209509944, "r2": 0.9954306889067229, "rmse": 0.19126950121516875, "rows": 400.0}
+[exit 0, 0.17s]
+$ boundml evaluate demo/ckpt --data demo/data/test.csv
+metrics on demo/data/test.csv:
+  mae            0.1465   (constant baseline 2.2394)
+  mse            0.0352   (constant baseline 11.0583)
+  r2             0.9968   (constant baseline -0.0071)
+  rmse           0.1877   (constant baseline 3.3254)
+  rows         400.0000   (constant baseline 400.0000)
+[exit 0, 0.01s]
+$ boundml pack demo/ckpt --out demo/model.boundml
+packed 'example-regression' -> demo/model.boundml (17 synthetic self-test vectors, verified after write)
+[exit 0, 0.02s]
+$ boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3
+wrote 400 predictions to demo/pred.csv in 0.001s
+  line  power
+  2  4.5001
+  3  6.3667
+  4  7.7849
+[exit 0, 0.01s]
+$ boundml plan demo/model.toml --mode infer --tensor-budget 64KiB
+error: BML-C005 tensor budget exceeded: plan needs 68228 bytes but the budget is 65536 bytes; largest contributors: arena x 2 session(s) (65536 bytes), shared weights (2692 bytes), dense0.act (16384 bytes), dense0.matmul (16384 bytes), dense0.pre (16384 bytes)
+[exit 4, 0.01s]

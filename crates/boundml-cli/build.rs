@@ -21,6 +21,13 @@ fn main() {
         revision.unwrap_or_else(|| "unknown".into())
     );
     println!("cargo:rerun-if-changed=build.rs");
+    // Rebuild when HEAD moves: watch HEAD itself and the branch ref it points to.
     println!("cargo:rerun-if-changed=../../.git/HEAD");
+    if let Ok(head) = std::fs::read_to_string("../../.git/HEAD")
+        && let Some(r) = head.trim().strip_prefix("ref: ")
+    {
+        println!("cargo:rerun-if-changed=../../.git/{r}");
+        println!("cargo:rerun-if-changed=../../.git/packed-refs");
+    }
     println!("cargo:rerun-if-env-changed=BOUNDML_BUILD_REVISION");
 }

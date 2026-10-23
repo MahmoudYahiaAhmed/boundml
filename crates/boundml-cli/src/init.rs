@@ -72,10 +72,15 @@ pub fn init(dir: &Path) -> Result<Vec<String>, String> {
     synth(&data.join("valid.csv"), 400, 2).map_err(io)?;
     synth(&data.join("test.csv"), 400, 3).map_err(io)?;
     std::fs::write(&cfg, CONFIG).map_err(io)?;
-    Ok(vec![
-        cfg.display().to_string(),
-        data.join("train.csv").display().to_string(),
-        data.join("valid.csv").display().to_string(),
-        data.join("test.csv").display().to_string(),
-    ])
+    // Display with forward slashes on every platform; Windows accepts them too.
+    let base = dir.display().to_string().replace('\\', "/");
+    Ok([
+        "model.toml",
+        "data/train.csv",
+        "data/valid.csv",
+        "data/test.csv",
+    ]
+    .iter()
+    .map(|f| format!("{}/{f}", base.trim_end_matches('/')))
+    .collect())
 }

@@ -80,10 +80,7 @@ pub fn version(long: &str, revision: &str, target: &str) -> CmdResult {
     ok(
         json!({"version": boundml_core::VERSION, "revision": revision, "target": target,
             "package_format_version": pkg, "checkpoint_format_version": ck}),
-        format!(
-            "boundml {long}
-package format v{pkg}, checkpoint format v{ck}"
-        ),
+        format!("boundml {long}\npackage format v{pkg}, checkpoint format v{ck}"),
     )
 }
 
@@ -278,8 +275,9 @@ pub fn train(
         out.global_step,
         checkpoint.display(),
         last.map(|l| format!(
-            "\nfinal epoch: train_loss={:.5} valid={:?}",
-            l.train_loss, l.valid
+            "\nfinal epoch: train_loss={:.5}{}",
+            l.train_loss,
+            fmt_metrics(&l.valid)
         ))
         .unwrap_or_default()
     );
@@ -483,26 +481,44 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize, preview: usize
         out.display()
     );
     if !shown.is_empty() {
-        let _ = write!(
-            text,
-            "
-  {}",
-            header.join("  ")
-        );
-        for r in &shown {
-            let cells: Vec<String> = r.iter().map(|v| fmt_cell(v)).collect();
-            let _ = write!(
-                text,
-                "
-  {}",
-                cells.join("  ")
-            );
+        // Right-aligned columns: header first, then the first `preview` rows.
+        let rows: Vec<Vec<String>> = std::iter::once(header.clone())
+            .chain(
+                shown
+                    .iter()
+                    .map(|r| r.iter().map(|v| fmt_cell(v)).collect()),
+            )
+            .collect();
+        let widths: Vec<usize> = (0..header.len())
+            .map(|c| rows.iter().map(|r| r[c].len()).max().unwrap_or(0))
+            .collect();
+        for r in &rows {
+            let cells: Vec<String> = r
+                .iter()
+                .zip(&widths)
+                .map(|(v, w)| format!("{v:>w$}"))
+                .collect();
+            let _ = write!(text, "\n  {}", cells.join("  "));
         }
     }
     ok(
         json!({"rows": total, "out": out.display().to_string(), "seconds": secs, "preview": shown}),
         text,
     )
+}
+
+/// `  valid: rmse=0.1913 r2=0.9954 ...` (rows omitted), or empty without validation.
+fn fmt_metrics(m: &std::collections::BTreeMap<String, f64>) -> String {
+    let parts: Vec<String> = m
+        .iter()
+        .filter(|(k, _)| k.as_str() != "rows")
+        .map(|(k, v)| format!("{k}={v:.4}"))
+        .collect();
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!("  valid: {}", parts.join(" "))
+    }
 }
 
 /// Shorten long float strings for the human-readable preview table.
