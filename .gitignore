@@ -1,4 +1,4 @@
-# Build outputs (any workspace, including bench/baselines)
+# Build outputs (any workspace, including python/)
 target/
 # Local run outputs, release archives, downloaded raw datasets
 /out/

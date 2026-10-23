@@ -64,6 +64,19 @@ somewhere else, add `--root <dir>`.
 BoundML is **not yet published on crates.io**. `cargo install boundml-cli` only works
 once it is.
 
+## Python package
+
+From a checkout, with Rust 1.94 and Python ≥ 3.9:
+
+```bash
+pip install maturin
+pip install ./python
+python -c "import boundml; print(boundml.__version__)"
+```
+
+This builds one wheel for every Python ≥ 3.9 on your platform (abi3). It is **not
+yet published on PyPI**. Usage: [python/README.md](../python/README.md).
+
 ## Checking the version
 
 ```bash

@@ -7,6 +7,23 @@ breaking changes; they are called out under **Breaking**.
 
 ## [Unreleased]
 
+### Added
+- `boundml` Python package (`python/`, PyO3 + maturin, one abi3 wheel for Python ≥
+  3.9): `train`, `evaluate`, `pack`, `load`, and `Model.predict` from pandas
+  DataFrames, dict rows or NumPy arrays, with predictions bitwise identical to the
+  CLI. Errors raise `boundml.BoundMLError` with the stable `BML-xxxx` code.
+
+### Removed
+- Launch drafts (`launch/`), internal planning notes (`docs/decision.md`,
+  `docs/research.md`, `docs/design-partner-plan.md`, `docs/benchmark-targets.md`),
+  asset-rendering and demo-recording scripts, and the tract/Burn benchmark workspace
+  (`bench/baselines`). Benchmarks now compare BoundML with PyTorch and ONNX Runtime.
+
+### Changed
+- Benchmarks: one untimed warm-up launch per runtime; peak memory is the OS
+  high-water mark on every platform (`ru_maxrss` via `wait4` on Linux and macOS);
+  the uncommitted files at measurement time are recorded by name.
+
 ## [0.1.0] — first public release (early release)
 
 ### Added

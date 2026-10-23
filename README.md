@@ -16,7 +16,7 @@ features. CPU only. **Early release (0.1.0).** [What is verified](docs/release-s
 <p align="center">
   <img src="assets/demo.svg" width="100%" alt="Terminal recording of the real boundml binary: version, init, train, evaluate against a constant baseline, pack, predict with a preview of three predictions, and a memory plan rejected with exit code 4 because it needs 68228 bytes but the budget is 65536 bytes.">
 </p>
-<sub>Recorded from the real binary by <code>scripts/record_demo.py</code>. Command typing speed is synthetic and pauses are capped at 1.2 s; output is unedited (<a href="assets/demo-transcript.txt">transcript</a>, <a href="assets/demo.cast">asciinema cast</a>).</sub>
+<sub>Recorded from the real binary. Command typing speed is synthetic and pauses are capped at 1.2 s; output is unedited (<a href="assets/demo-transcript.txt">transcript</a>, <a href="assets/demo.cast">asciinema cast</a>).</sub>
 
 ## Install
 
@@ -99,6 +99,30 @@ Exit code 4. Fix it by lowering `deploy.max_batch` (128 → 64 fits) or
 in [docs/errors.md](docs/errors.md). Full walkthrough with real datasets:
 [docs/quickstart.md](docs/quickstart.md).
 
+## Use it from Python
+
+The `boundml` Python package runs the same native code, so predictions are bitwise
+identical to the CLI. Build and install it from a checkout (needs Rust 1.94):
+
+```bash
+pip install maturin
+pip install ./python
+```
+
+```python
+import boundml
+
+boundml.train("examples/breast_cancer/linear.toml", "out/bc/ckpt")
+print(boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv")["model"])
+model = boundml.pack("out/bc/ckpt", "out/bc/model.boundml")
+
+model = boundml.load("out/bc/model.boundml")
+model.predict(df)          # pandas DataFrame (columns by name), dict rows, or NumPy
+```
+
+Inputs are raw values; the package applies its fitted preprocessing. Errors raise
+`boundml.BoundMLError` with a stable `code`. Details: [python/README.md](python/README.md).
+
 ## Embed it in a Rust application
 
 ```toml
@@ -162,7 +186,6 @@ Checksums detect corruption; they do not prove who made the package. Details:
 | Classical ML (trees, SVMs, clustering) in Rust | Linfa, SmartCore, Aprender | BoundML has dense models only; it adds packaging with preprocessing and compatibility checks |
 | Memory-planned mobile deployment of PyTorch models | ExecuTorch | BoundML targets Rust applications and tabular inputs with no Python in the workflow |
 
-Research notes with sources: [docs/research.md](docs/research.md).
 
 ## Evidence
 
@@ -197,7 +220,7 @@ storage** for a declared batch size and session count, not whole-process memory.
 | Tasks | regression (1 target), binary, multiclass |
 | Data | numeric CSV columns mapped by name; standardization; mean imputation or reject |
 | Training | SGD (momentum, L2), AdamW, minibatches, exact checkpoint/resume |
-| Run | Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
+| Run | Python package (`boundml`, Windows wheel tested), Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
 | Import | dense PyTorch `nn.Sequential` / Keras `Sequential`, checked against the source framework ([migrate/](migrate/README.md)) |
 | Platforms | Windows x86_64 built, tested and archive smoke-tested (beta scope); Linux x86_64 source build and tests passed locally under WSL2 only; Linux and macOS arm64 CI and archives configured, **not yet observed** |
 | Not supported | GPU, CNN/RNN/transformers, trees, categorical features, arbitrary ONNX, wasm/no_std |

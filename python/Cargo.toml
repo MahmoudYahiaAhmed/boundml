@@ -1,0 +1,28 @@
+[package]
+name = "boundml-py"
+description = "Python bindings for BoundML (native extension module `boundml._native`)"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+boundml-artifact = { path = "../crates/boundml-artifact" }
+boundml-train = { path = "../crates/boundml-train" }
+numpy = "0.30"
+pyo3 = { version = "0.30", features = ["abi3-py39"] }
+serde = "1"
+serde_json = "1"
+
+# Built by maturin (see pyproject.toml), outside the main Rust workspace so that
+# `cargo test --workspace` needs no Python interpreter.
+[workspace]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

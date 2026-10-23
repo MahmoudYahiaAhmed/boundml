@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["bench", "crates/*", "examples/embed", "examples/power-app"]
-exclude = ["bench/baselines"]
+exclude = ["python"]
 
 [workspace.package]
 version = "0.1.0"

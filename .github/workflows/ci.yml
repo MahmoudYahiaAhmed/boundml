@@ -75,3 +75,33 @@ jobs:
       - run: pip install tensorflow-cpu keras safetensors numpy
       - run: cargo build --release --locked -p boundml-cli
       - run: python migrate/check_migration.py
+
+  python:
+    # Builds the `boundml` wheel and runs its tests, including bitwise parity with the CLI.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: cargo fmt --manifest-path python/Cargo.toml --check
+      - run: cargo clippy --manifest-path python/Cargo.toml --locked -- -D warnings
+      - run: cargo build --release --locked -p boundml-cli
+      - run: pip install maturin pytest pandas numpy
+      - name: Build and install the wheel
+        shell: bash
+        run: |
+          maturin build --release --locked --manifest-path python/Cargo.toml --out wheels
+          pip install --no-index --find-links wheels boundml
+      - run: python -m pytest python/tests -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}
+          path: wheels/*.whl
