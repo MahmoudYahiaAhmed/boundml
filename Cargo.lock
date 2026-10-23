@@ -205,6 +205,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "boundml-bench"
+version = "0.1.0"
+dependencies = [
+ "boundml-artifact",
+ "boundml-data",
+ "boundml-train",
+ "serde_json",
+]
+
+[[package]]
 name = "boundml-cli"
 version = "0.1.0"
 dependencies = [

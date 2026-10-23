@@ -139,13 +139,13 @@ impl Predictor {
                             message: format!("feature '{name}' given twice"),
                         });
                     }
-                    if let Some(v) = value {
-                        if !v.is_finite() {
-                            return Err(ArtifactError::Input {
-                                row,
-                                message: format!("feature '{name}' is not finite"),
-                            });
-                        }
+                    if let Some(v) = value
+                        && !v.is_finite()
+                    {
+                        return Err(ArtifactError::Input {
+                            row,
+                            message: format!("feature '{name}' is not finite"),
+                        });
                     }
                     dst[i] = value;
                 }

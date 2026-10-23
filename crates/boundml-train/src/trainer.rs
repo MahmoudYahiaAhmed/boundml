@@ -387,9 +387,12 @@ pub fn evaluate_preprocessed(
     Ok(acc.finish())
 }
 
+/// Predicts `n` raw rows (schema order) into an output buffer.
+pub type PredictFn<'a> = dyn FnMut(&[Option<f64>], usize, &mut [f32]) -> Result<()> + 'a;
+
 /// Evaluate model outputs and the constant baseline on the same rows.
 pub fn evaluate_with_baseline(
-    predict: &mut dyn FnMut(&[Option<f64>], usize, &mut [f32]) -> Result<()>,
+    predict: &mut PredictFn<'_>,
     path: &Path,
     schema: &Schema,
     labels: &LabelStats,

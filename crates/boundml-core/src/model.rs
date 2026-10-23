@@ -65,12 +65,12 @@ impl DenseSpec {
                 "at most {MAX_LAYERS} hidden layers are supported"
             )));
         }
-        if let Task::Multiclass { classes } = self.task {
-            if classes < 2 {
-                return Err(CoreError::Graph(
-                    "multiclass needs at least 2 classes".into(),
-                ));
-            }
+        if let Task::Multiclass { classes } = self.task
+            && classes < 2
+        {
+            return Err(CoreError::Graph(
+                "multiclass needs at least 2 classes".into(),
+            ));
         }
         let mut g = GraphBuilder::new();
         let x = g.input("x", self.inputs);

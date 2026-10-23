@@ -245,17 +245,17 @@ pub fn compare(
     // Memory.
     let ra = current.memory_report(a.bounds.sessions)?;
     let rb = candidate.memory_report(a.bounds.sessions)?;
-    if let Some(budget) = a.bounds.tensor_budget_bytes {
-        if rb.total_planned_bytes > budget {
-            add(
-                "memory",
-                Severity::Breaking,
-                format!(
-                    "candidate needs {} planned bytes for {} session(s); current deployment budget is {budget}",
-                    rb.total_planned_bytes, a.bounds.sessions
-                ),
-            );
-        }
+    if let Some(budget) = a.bounds.tensor_budget_bytes
+        && rb.total_planned_bytes > budget
+    {
+        add(
+            "memory",
+            Severity::Breaking,
+            format!(
+                "candidate needs {} planned bytes for {} session(s); current deployment budget is {budget}",
+                rb.total_planned_bytes, a.bounds.sessions
+            ),
+        );
     }
     if rb.total_planned_bytes != ra.total_planned_bytes {
         add(
@@ -276,17 +276,17 @@ pub fn compare(
         Some(path) => Some(numeric_diff(current, candidate, path, opts.max_rows)?),
         None => None,
     };
-    if let (Some(n), Some(t)) = (&numeric, opts.max_abs_diff) {
-        if n.max_abs_diff > t {
-            changes.push(Change {
-                area: "numeric".into(),
-                severity: Severity::Breaking,
-                message: format!(
-                    "max |output difference| {} exceeds threshold {t}",
-                    n.max_abs_diff
-                ),
-            });
-        }
+    if let (Some(n), Some(t)) = (&numeric, opts.max_abs_diff)
+        && n.max_abs_diff > t
+    {
+        changes.push(Change {
+            area: "numeric".into(),
+            severity: Severity::Breaking,
+            message: format!(
+                "max |output difference| {} exceeds threshold {t}",
+                n.max_abs_diff
+            ),
+        });
     }
     let worst = changes.iter().map(|c| c.severity).max();
     let identical = changes.is_empty()

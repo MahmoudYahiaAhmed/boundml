@@ -35,7 +35,7 @@ fn adamw_matches_reference() {
     let g = graph();
     let mut opt = Optimizer::new(cfg, &g).unwrap();
     let mut p32 = vec![1.0f32, -0.5, 0.2];
-    let mut p = vec![1.0f64, -0.5, 0.2];
+    let mut p = [1.0f64, -0.5, 0.2];
     let (mut m, mut v) = (vec![0.0f64; 3], vec![0.0f64; 3]);
     for (t, grads) in GRADS.iter().enumerate() {
         opt.step(&mut p32, grads).unwrap();
@@ -73,8 +73,8 @@ fn sgd_momentum_matches_reference() {
     };
     let mut opt = Optimizer::new(cfg, &graph()).unwrap();
     let mut p32 = vec![1.0f32, -0.5, 0.2];
-    let mut p = vec![1.0f64, -0.5, 0.2];
-    let mut buf = vec![0.0f64; 3];
+    let mut p = [1.0f64, -0.5, 0.2];
+    let mut buf = [0.0f64; 3];
     for grads in GRADS {
         opt.step(&mut p32, &grads).unwrap();
         for i in 0..3 {

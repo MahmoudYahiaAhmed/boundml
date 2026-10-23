@@ -75,12 +75,12 @@ pub fn encode_tensors(tensors: &[(String, [usize; 2], &[f32])]) -> Result<Vec<u8
     safetensors::serialize(views, None).map_err(|e| ArtifactError::Format(e.to_string()))
 }
 
+/// A decoded rank-2 f32 tensor: `(name, [rows, cols], values)`.
+pub type NamedTensor = (String, [usize; 2], Vec<f32>);
+
 /// Decode a safetensors buffer into `(name, shape, values)` with strict checks:
 /// f32 only, rank 2 (rank 1 and 0 are rejected), finite values, at most `max_tensors`.
-pub fn decode_tensors(
-    bytes: &[u8],
-    max_tensors: usize,
-) -> Result<Vec<(String, [usize; 2], Vec<f32>)>> {
+pub fn decode_tensors(bytes: &[u8], max_tensors: usize) -> Result<Vec<NamedTensor>> {
     let st = SafeTensors::deserialize(bytes)
         .map_err(|e| ArtifactError::Format(format!("invalid safetensors: {e}")))?;
     let tensors = st.tensors();

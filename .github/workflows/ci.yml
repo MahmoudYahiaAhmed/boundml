@@ -1,0 +1,51 @@
+# Configured for Linux, Windows and macOS. As of 2026-10-23 this workflow has NOT
+# been observed running (the repository has not been pushed); see docs/release-status.md.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: cargo doc --workspace --no-deps --locked
+      - run: cargo build --release --workspace --locked
+      - name: Walkthrough smoke test
+        shell: bash
+        run: |
+          B=target/release/boundml
+          $B init out/smoke
+          $B validate out/smoke/model.toml
+          $B train out/smoke/model.toml --checkpoint out/smoke/ckpt --quiet
+          $B pack out/smoke/ckpt --out out/smoke/model.boundml
+          $B verify out/smoke/model.boundml
+          $B predict out/smoke/model.boundml --data out/smoke/data/test.csv --out out/smoke/pred.csv
+
+  migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install --index-url https://download.pytorch.org/whl/cpu torch
+      - run: pip install tensorflow-cpu keras safetensors numpy
+      - run: cargo build --release --locked -p boundml-cli
+      - run: python migrate/check_migration.py

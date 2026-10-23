@@ -157,7 +157,7 @@ fn malformed_and_policy_violations() {
         assert_eq!(c, code, "{body}: {b}");
         assert!(b.contains(needle), "{body}: {b}");
     }
-    let nine = format!(r#"{{"rows":[{}]}}"#, vec![r#"{"a":1,"b":2}"#; 9].join(","));
+    let nine = format!(r#"{{"rows":[{}]}}"#, [r#"{"a":1,"b":2}"#; 9].join(","));
     assert_eq!(http(a, "POST", "/v1/predict", &nine).0, 422);
     assert_eq!(http(a, "GET", "/nope", "").0, 404);
     s.shutdown();
@@ -198,7 +198,7 @@ fn overload_is_rejected_not_queued_without_bound() {
     let ok = codes.iter().filter(|&&c| c == 200).count();
     let rejected = codes.iter().filter(|&&c| c == 503).count();
     assert!(
-        ok >= 1 && ok <= 2,
+        (1..=2).contains(&ok),
         "at most workers+queue admitted: {codes:?}"
     );
     assert_eq!(ok + rejected, 6, "{codes:?}");

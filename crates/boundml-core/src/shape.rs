@@ -50,12 +50,12 @@ impl Shape {
 
     pub fn new(rows: Dim, cols: Dim) -> Result<Shape> {
         for d in [rows, cols] {
-            if let Dim::Fixed(n) = d {
-                if n == 0 || n > MAX_DIM {
-                    return Err(CoreError::Shape(format!(
-                        "dimension {n} outside 1..={MAX_DIM}"
-                    )));
-                }
+            if let Dim::Fixed(n) = d
+                && (n == 0 || n > MAX_DIM)
+            {
+                return Err(CoreError::Shape(format!(
+                    "dimension {n} outside 1..={MAX_DIM}"
+                )));
             }
         }
         Ok(Shape { rows, cols })

@@ -397,10 +397,8 @@ impl Graph {
             target,
         };
         let reach_out = graph.ancestors(graph.def.output);
-        if let Some(t) = graph.target {
-            if reach_out[t] {
-                return gerr("inference output must not depend on the training target");
-            }
+        if graph.target.is_some_and(|t| reach_out[t]) {
+            return gerr("inference output must not depend on the training target");
         }
         let reach_loss = graph.def.loss.map(|l| graph.ancestors(l));
         for (id, n) in graph.def.nodes.iter().enumerate() {

@@ -14,11 +14,18 @@ fn fixture() -> Value {
 }
 
 fn f32s(v: &Value) -> Vec<f32> {
-    v.as_array().unwrap().iter().map(|x| x.as_f64().unwrap() as f32).collect()
+    v.as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_f64().unwrap() as f32)
+        .collect()
 }
 
 fn close(what: &str, got: f64, want: f64) {
-    assert!((got - want).abs() <= ATOL + RTOL * want.abs(), "{what}: {got} vs torch {want}");
+    assert!(
+        (got - want).abs() <= ATOL + RTOL * want.abs(),
+        "{what}: {got} vs torch {want}"
+    );
 }
 
 #[test]
@@ -29,7 +36,9 @@ fn losses_and_gradients_match_pytorch() {
         let task = match c["task"].as_str().unwrap() {
             "regression" => Task::Regression,
             "binary" => Task::Binary,
-            _ => Task::Multiclass { classes: c["classes"].as_u64().unwrap() as usize },
+            _ => Task::Multiclass {
+                classes: c["classes"].as_u64().unwrap() as usize,
+            },
         };
         let activation = match c["activation"].as_str().unwrap() {
             "relu" => Activation::Relu,
@@ -38,18 +47,44 @@ fn losses_and_gradients_match_pytorch() {
         };
         let spec = DenseSpec {
             inputs: c["inputs"].as_u64().unwrap() as usize,
-            hidden: c["hidden"].as_array().unwrap().iter().map(|h| h.as_u64().unwrap() as usize).collect(),
+            hidden: c["hidden"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|h| h.as_u64().unwrap() as usize)
+                .collect(),
             activation,
             task,
         };
         let graph = Arc::new(spec.graph().unwrap());
         let batch = c["batch"].as_u64().unwrap() as usize;
         let params = f32s(&c["params"]);
-        assert_eq!(params.len(), graph.param_count(), "{name}: parameter layout");
-        let mut ex = Executor::new(Arc::clone(&graph), Mode::Training, batch, PlannerKind::Reuse).unwrap();
-        let loss = ex.forward_backward(&params, &f32s(&c["x"]), &f32s(&c["y"]), batch).unwrap();
-        close(&format!("{name} loss"), loss as f64, c["loss"].as_f64().unwrap());
-        for (i, (g, w)) in ex.param_grads().iter().zip(c["grads"].as_array().unwrap()).enumerate() {
+        assert_eq!(
+            params.len(),
+            graph.param_count(),
+            "{name}: parameter layout"
+        );
+        let mut ex = Executor::new(
+            Arc::clone(&graph),
+            Mode::Training,
+            batch,
+            PlannerKind::Reuse,
+        )
+        .unwrap();
+        let loss = ex
+            .forward_backward(&params, &f32s(&c["x"]), &f32s(&c["y"]), batch)
+            .unwrap();
+        close(
+            &format!("{name} loss"),
+            loss as f64,
+            c["loss"].as_f64().unwrap(),
+        );
+        for (i, (g, w)) in ex
+            .param_grads()
+            .iter()
+            .zip(c["grads"].as_array().unwrap())
+            .enumerate()
+        {
             close(&format!("{name} grad[{i}]"), *g as f64, w.as_f64().unwrap());
         }
     }
@@ -67,16 +102,42 @@ fn optimizers_match_pytorch() {
     let out = g.add("o", xw, b);
     let graph = g.build(out, None).unwrap();
     let configs = [
-        ("adamw", OptimizerConfig::AdamW { lr: 0.01, beta1: 0.9, beta2: 0.99, eps: 1e-8, weight_decay: 0.1 }),
-        ("sgd", OptimizerConfig::Sgd { lr: 0.1, momentum: 0.9, weight_decay: 0.05 }),
+        (
+            "adamw",
+            OptimizerConfig::AdamW {
+                lr: 0.01,
+                beta1: 0.9,
+                beta2: 0.99,
+                eps: 1e-8,
+                weight_decay: 0.1,
+            },
+        ),
+        (
+            "sgd",
+            OptimizerConfig::Sgd {
+                lr: 0.1,
+                momentum: 0.9,
+                weight_decay: 0.05,
+            },
+        ),
     ];
     for (key, cfg) in configs {
         let mut opt = Optimizer::new(cfg, &graph).unwrap();
         let mut p = f32s(&o["init"]);
-        for (step, (grads, want)) in o["grads"].as_array().unwrap().iter().zip(o[key].as_array().unwrap()).enumerate() {
+        for (step, (grads, want)) in o["grads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .zip(o[key].as_array().unwrap())
+            .enumerate()
+        {
             opt.step(&mut p, &f32s(grads)).unwrap();
             for (i, w) in f32s(want).iter().enumerate() {
-                assert!((p[i] - w).abs() < 1e-6, "{key} step {step} param {i}: {} vs torch {w}", p[i]);
+                assert!(
+                    (p[i] - w).abs() < 1e-6,
+                    "{key} step {step} param {i}: {} vs torch {w}",
+                    p[i]
+                );
             }
         }
     }

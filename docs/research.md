@@ -199,3 +199,18 @@ Legend: D = documented, ND = not documented in pages checked, U = unverified.
 - **ExecuTorch is the nearest conceptual match** for "planned memory + bundled self-test". However, it is PyTorch/Python-authored with a C++ runtime, and nothing in the pages checked covers tabular preprocessing or schema.
 - **Burn** could host BoundML-style features as a layer on top: it has training, no_std and a versioned record format. Its 0.22 record-format break shows the compatibility pain is real.
 - **Dormant or lagging**: dfdx (last release 2023-07-27), MicroFlow (2024-05-31), and Luminal on crates.io (2024-03-01; the repo is active). Linfa's last release was 10 months ago.
+
+### Addendum: Aprender source check (2026-10-23, `main` branch via GitHub API/raw files)
+
+Checked because the evidence above flagged Aprender as the nearest Rust overlap.
+- `crates/aprender-core/src/pipeline.rs`: an sklearn-style `Pipeline` of
+  `Box<dyn Transformer>` steps plus a final `Box<dyn Estimator>`. Fit/predict apply the
+  same transformer chain in-process. No `save`/`load`/`Serialize` appears in that
+  file, so persisting the *combined* pipeline as one artifact was not found.
+- `crates/aprender-core/src/preprocessing/mod.rs`: `StandardScaler` derives
+  `Serialize`/`Deserialize` and has `save_safetensors`. A fitted scaler can therefore
+  be persisted, as a file separate from the model.
+- Not checked: whether some other Aprender module binds a scaler, feature names and a
+  model into one `.apr` file. The conclusion "fitted preprocessing + feature schema in
+  one artifact: not documented" stays at *not found in files checked*. It is not
+  *absent*.
