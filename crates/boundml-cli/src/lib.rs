@@ -26,7 +26,7 @@ pub fn exit_code_for(message: &str) -> i32 {
         c if c.starts_with("BML-C") || c.starts_with("BML-D") || c.starts_with("BML-T") => {
             exit::INVALID_INPUT
         }
-        "BML-A001" | "BML-A008" | "BML-A009" | "BML-M001" => exit::INVALID_INPUT,
+        "BML-A001" | "BML-A008" | "BML-A009" | "BML-M001" | "BML-S005" => exit::INVALID_INPUT,
         _ => exit::INTERNAL,
     }
 }

@@ -72,6 +72,10 @@ breaking changes; they are called out under **Breaking**.
 - Preprocessing checks exact input and output lengths. The server keeps a compute
   slot until a timed-out computation really finishes, replaces a predictor after a
   panic, and reports `usable_workers` in `/readyz` (503 when none is usable).
+- **Breaking:** an invalid server configuration (`BML-S005`, e.g. more `--workers`
+  than the package's sessions) exits with 3 (invalid input) instead of 1. The embed
+  example releases its first predictor before starting two more, so it stays within
+  the declared sessions.
 - Benchmarks are gated on elementwise output parity across runtimes, keep every
   run's record, and compare training from identical initial weights and batch
   order. Earlier results are preserved under `docs/results/history/`.

@@ -41,7 +41,7 @@ returns `{"error": {"code", "message"}}`.
 | BML-T001 | train | configuration error |
 | BML-T002 | train | checkpoint missing, corrupted, wrong version, or config changed since it was written |
 | BML-T003 | train | training data changed since the checkpoint |
-| BML-A001 | artifact | I/O error |
+| BML-A001 | artifact | I/O error, including an output path (`--out`) that is the input file |
 | BML-A002 | artifact | malformed artifact (bad JSON, unknown field or op, wrong file type, invalid safetensors) |
 | BML-A003 | artifact | unsupported format version or runtime too old |
 | BML-A004 | artifact | integrity (hash/size) mismatch: corrupted or modified file |
@@ -49,13 +49,14 @@ returns `{"error": {"code", "message"}}`.
 | BML-A006 | artifact | internally inconsistent: tensor names/shapes, widths, tolerances, or a graph rule violated (the underlying `BML-C`/`BML-D` code is in the message) |
 | BML-A007 | artifact | self-test failed: outputs differ from bundled test vectors |
 | BML-A009 | artifact | invalid option (e.g. `--max-abs-diff` not finite or negative) |
+| BML-A010 | artifact | all of the package's declared `bounds.sessions` are in use: a further `Predictor` is refused before allocating (exit 4); drop one, or pack with more sessions |
 | BML-A008 | artifact | invalid input row (missing under `reject`, duplicate or unknown field, non-finite) |
 | BML-M001 | import | invalid or unsupported import bundle (including atol > 1e-3, rtol > 1e-2, or fewer than 4 reference rows) |
 | BML-S001 | server | at capacity (HTTP 503 with `Retry-After: 1`) |
 | BML-S002 | server | malformed JSON request (400) |
 | BML-S003 | server | shutting down (503) |
 | BML-S004 | server | internal worker error (500) |
-| BML-S005 | server | invalid server configuration |
+| BML-S005 | server | invalid server configuration, e.g. `--workers` above the package's sessions or `--max-rows` above its `max_batch` (startup error, exit 3) |
 | BML-S006 | server | cannot bind the address |
 
 HTTP statuses: 200 ok, 400 malformed JSON, 404 unknown route, 408 request timeout,

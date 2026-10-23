@@ -52,6 +52,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 3. Concurrency: sessions never share scratch; the package (weights) is shared.
+    // Each predictor holds one of the package's declared sessions until dropped, so
+    // release this one before starting two more (the example package declares 2).
+    drop(predictor);
     let threads: Vec<_> = (0..2)
         .map(|_| {
             let pkg = Arc::clone(&package);

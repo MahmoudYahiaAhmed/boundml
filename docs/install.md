@@ -12,6 +12,8 @@ no Python, no ML framework, no network access.
 
 Archives are attached to this repository's [Releases](../../../releases) page. Each
 archive has a `.sha256` file, and the release has a combined `SHA256SUMS`.
+The archive includes the docs and example sources for reading; building the Rust
+examples (`examples/embed`, `examples/power-app`) needs a checkout of the repository.
 
 ## Windows (PowerShell)
 
@@ -56,7 +58,7 @@ cargo install --path crates/boundml-cli --locked
 ```
 
 This installs `boundml` into `~/.cargo/bin` (Windows: `%USERPROFILE%\.cargo\bin`).
-A release build took 32 s on an 8-core machine with crate downloads already cached; the first build also downloads about 50 crates. To put it
+A release build took about 35 s on an 8-core machine with crate downloads already cached; the first build also downloads about 50 crates. To put it
 somewhere else, add `--root <dir>`.
 
 BoundML is **not yet published on crates.io**. `cargo install boundml-cli` only works

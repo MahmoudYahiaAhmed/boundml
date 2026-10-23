@@ -39,7 +39,8 @@ boundml --version
 ```text
 boundml 0.1.0 (revision 1f4146b7fe, x86_64-pc-windows-msvc)
 ```
-The revision (source commit) and target in parentheses identify your build and will differ.
+The revision (source commit) and target in parentheses identify your build and will differ. A build from a
+source archive without `.git` prints `revision unknown`.
 
 ## Quickstart: CSV → model → prediction
 

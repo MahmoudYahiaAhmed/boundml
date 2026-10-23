@@ -5,7 +5,7 @@ Two paths, both from a release archive or a source install (see [install.md](ins
 1. **CLI**: train from CSV, evaluate, package and predict.
 2. **Rust**: load the resulting package inside your own program.
 
-Outputs below are copied from a real run (`assets/demo-transcript.txt`). Timings
+Outputs below are copied from real runs (the core steps are recorded in `assets/demo-transcript.txt`). Timings
 differ between machines; metrics are deterministic for a given binary and platform.
 
 Measured time to the first prediction with a prebuilt Windows archive: **0.02 s** to extract the archive with Python's `zipfile` (about 0.5 s with PowerShell's `Expand-Archive`), then **0.22 s** for `init`, `train`, `pack` and `predict` together (train 0.17 s), measured by `scripts/release.py` on the machine described in [benchmarks.md](benchmarks.md). Downloading the archive (about 2.1 MB) and reading these instructions take longer than running them. A source build (`cargo install`) adds the compile time measured in [install.md](install.md).
@@ -39,7 +39,7 @@ boundml validate demo/model.toml
 ```text
 demo/model.toml: valid
   task Regression, 3 features, data headers ok (2 file(s))
-  training plan 23.0 KiB (budget 16MiB), inference plan 66.6 KiB (budget 1MiB)
+  training plan 32.6 KiB (budget 16MiB), inference plan 66.6 KiB (budget 1MiB)
 ```
 
 This checks the config, the CSV headers (columns are matched by name) and both

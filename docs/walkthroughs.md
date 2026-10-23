@@ -1,7 +1,11 @@
 # Walkthroughs
 
 All outputs below were produced by the commands shown, on 2026-10-23, Windows 11 x64,
-`target/release/boundml`. Training is deterministic, so you should get the same
+`target/release/boundml`. The commands are written as `boundml`: install it with
+`cargo install --path crates/boundml-cli --locked` ([install.md](install.md)), or
+run `target/release/boundml` (PowerShell: `.	argeteleaseoundml`) after the build
+below. Sections 1–3 need a checkout: the release archive ships only the
+breast-cancer splits. Training is deterministic, so you should get the same
 metrics on the same platform. Wall-clock times will differ.
 
 ## 0. Quickstart (synthetic data, no download)
@@ -13,6 +17,9 @@ cargo build --release
 ```bash
 boundml init demo
 ```
+
+(`init` refuses to overwrite an existing `demo` directory with `BML-T001`; pick another
+name if you already ran the README quickstart.)
 
 ```bash
 boundml validate demo/model.toml
@@ -79,6 +86,9 @@ Split with seed 2026 into 367 train / 78 validation / 124 test rows (hashes in
 test set. Models were selected on validation only, and each final config was
 evaluated on test once.
 
+Optional, to re-download the raw UCI files; the checkout already ships `all.csv`
+and the splits below:
+
 ```bash
 python -I datasets/prepare.py --download
 ```
@@ -97,7 +107,7 @@ boundml evaluate out/wt/breast_cancer-linear/ckpt --data datasets/breast_cancer/
 
 | Model (test, 124 rows) | Accuracy | Log loss | Precision (M) | Recall (M) | F1 |
 |---|---|---|---|---|---|
-| Constant (majority class) | 0.5806 | 0.6870 | — | 0.0000 | 0.0000 |
+| Constant (majority class) | 0.5806 | 0.6870 | 0.0000 | 0.0000 | 0.0000 |
 | Logistic regression (`linear.toml`) | **0.9597** | **0.1379** | 1.0000 | 0.9038 | 0.9495 |
 | MLP 30-16-1 ReLU (`mlp.toml`) | **0.9597** | 0.2298 | 0.9796 | 0.9231 | 0.9505 |
 
@@ -117,6 +127,7 @@ boundml split datasets/wine_red/all.csv --out datasets/wine_red --valid 0.15 --t
 
 ```bash
 boundml train examples/wine_quality/mlp.toml --checkpoint out/wt/wine_quality-mlp/ckpt --quiet
+boundml train examples/wine_quality/linear.toml --checkpoint out/wt/wine_quality-linear/ckpt --quiet
 ```
 
 ```bash
@@ -157,7 +168,7 @@ boundml pack out/wt/wine_quality-mlp/ckpt --out out/wt/candidate.boundml
 boundml compare out/wt/current.boundml out/wt/candidate.boundml --data datasets/wine_red/valid.csv
 ```
 
-The report lists graph/parameter changes, refitted preprocessing, planned memory
+The report lists graph/parameter changes, refitted preprocessing (when the statistics differ), planned memory
 before and after, max/mean output difference and the validation metric for both
 packages. `--max-abs-diff` turns large numeric changes into a breaking verdict
 (exit code 6) for CI gating.

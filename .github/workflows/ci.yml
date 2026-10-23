@@ -46,6 +46,7 @@ jobs:
           $B pack out/smoke/ckpt --out out/smoke/model.boundml
           $B verify out/smoke/model.boundml
           $B predict out/smoke/model.boundml --data out/smoke/data/test.csv --out out/smoke/pred.csv
+          target/release/boundml-embed-example out/smoke/model.boundml temperature=20 humidity= load=0.5
 
   package-smoke:
     # Builds the release archive for this platform and tests the extracted archive.

@@ -209,3 +209,21 @@ fn an_unreplaceable_predictor_fails_readiness_explicitly() {
     assert_eq!(code, 408, "{body}");
     s.shutdown();
 }
+
+#[test]
+fn serve_with_more_workers_than_declared_sessions_is_a_config_error_exit_3() {
+    let d = tempfile::tempdir().unwrap();
+    package(d.path(), 2);
+    let o = std::process::Command::new(env!("CARGO_BIN_EXE_boundml"))
+        .args([
+            "serve",
+            d.path().join("p").to_str().unwrap(),
+            "--workers",
+            "3",
+        ])
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&o.stderr);
+    assert!(err.contains("BML-S005"), "{err}");
+    assert_eq!(o.status.code(), Some(3), "{err}");
+}
