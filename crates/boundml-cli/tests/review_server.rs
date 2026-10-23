@@ -227,3 +227,53 @@ fn serve_with_more_workers_than_declared_sessions_is_a_config_error_exit_3() {
     assert!(err.contains("BML-S005"), "{err}");
     assert_eq!(o.status.code(), Some(3), "{err}");
 }
+
+/// CI regression (windows-latest): an overload 503 sent before the body was read was
+/// lost to a TCP reset when the server closed with unread request bytes.
+#[test]
+fn overload_503_reaches_a_client_that_sent_a_body() {
+    let d = tempfile::tempdir().unwrap();
+    let hooks = Arc::new(TestHooks::default());
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    *hooks.hold_next.lock().unwrap() = Some((entered_tx, release_rx));
+    let cfg = ServeConfig {
+        queue: 0,
+        timeout: Duration::from_secs(10),
+        ..cfg(&hooks)
+    };
+    let s = start(package(d.path(), 1), cfg);
+    let a = s.addr;
+    let first = std::thread::spawn(move || http(a, "POST", "/v1/predict", ONE).0);
+    entered_rx
+        .recv_timeout(Duration::from_secs(10))
+        .expect("first request holds the only slot");
+    // The body arrives after the server has already decided to reject (as on a slow
+    // network): headers first, the 16 KiB body 100 ms later, then read the response.
+    let body = format!("{}{}", ONE, " ".repeat(16 * 1024));
+    let responses: Vec<std::io::Result<String>> = (0..5)
+        .map(|_| {
+            let mut c = std::net::TcpStream::connect(a)?;
+            c.set_read_timeout(Some(Duration::from_secs(20)))?;
+            write!(
+                c,
+                "POST /v1/predict HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\n\r\n",
+                body.len()
+            )?;
+            std::thread::sleep(Duration::from_millis(100));
+            let _ = c.write_all(body.as_bytes());
+            let mut resp = String::new();
+            c.read_to_string(&mut resp)?;
+            Ok(resp)
+        })
+        .collect();
+    // Release the held slot before asserting, so a failure cannot deadlock shutdown.
+    release_tx.send(()).unwrap();
+    assert_eq!(first.join().unwrap(), 200);
+    for r in responses {
+        let resp = r.expect("the 503 must arrive, not a connection reset");
+        assert!(resp.starts_with("HTTP/1.1 503"), "{resp}");
+        assert!(resp.contains("BML-S001"), "{resp}");
+    }
+    s.shutdown();
+}

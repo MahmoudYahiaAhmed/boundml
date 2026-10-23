@@ -309,7 +309,11 @@ struct PredictResponse {
 
 /// Admission control runs *before* the request body is read, so at most
 /// `workers + queue` bodies (each <= `max_body_bytes`) are buffered at any time.
-/// Excess requests get 503 without their bodies being read.
+/// Excess requests get 503 without their bodies being buffered: up to
+/// [`REJECT_DRAIN_BYTES`] of the body is read and discarded (for at most
+/// [`REJECT_DRAIN_TIME`]) so the connection can close cleanly. Closing a socket with
+/// unread request bytes makes the OS send a TCP reset, which can destroy the 503
+/// before the client reads it (seen on Windows as error 10053).
 async fn admit(
     State(s): State<Arc<AppState>>,
     req: axum::extract::Request,
@@ -320,13 +324,40 @@ async fn admit(
     }
     let Ok(_admitted) = s.admission.try_acquire() else {
         s.rejected_overload.fetch_add(1, Ordering::Relaxed);
-        return error(
+        discard_body(req.into_body()).await;
+        let mut resp = error(
             StatusCode::SERVICE_UNAVAILABLE,
             "BML-S001",
             "server at capacity; retry later",
         );
+        resp.headers_mut().insert(
+            axum::http::header::CONNECTION,
+            axum::http::HeaderValue::from_static("close"),
+        );
+        return resp;
     };
     next.run(req).await
+}
+
+/// Most request bytes a rejected request may have read and discarded.
+pub const REJECT_DRAIN_BYTES: usize = 64 * 1024;
+/// Longest time spent discarding a rejected request's body.
+pub const REJECT_DRAIN_TIME: Duration = Duration::from_millis(250);
+
+/// Read and drop body frames, one at a time, within the drain limits.
+async fn discard_body(body: axum::body::Body) {
+    use http_body_util::BodyExt;
+    let mut body = body;
+    let mut seen = 0usize;
+    let _ = tokio::time::timeout(REJECT_DRAIN_TIME, async {
+        while seen <= REJECT_DRAIN_BYTES {
+            match body.frame().await {
+                Some(Ok(frame)) => seen += frame.data_ref().map_or(0, |d| d.len()),
+                _ => break,
+            }
+        }
+    })
+    .await;
 }
 
 async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
