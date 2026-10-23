@@ -43,7 +43,7 @@ INCLUDE_FILES = [
     "datasets/README.md",
 ]
 INCLUDE_GLOBS = [
-    "docs/*.md", "docs/results/*.json", "assets/*.png", "assets/*.svg", "assets/demo.cast",
+    "docs/*.md", "docs/results/*.json", "docs/results/history/*/*", "assets/*.png", "assets/*.svg", "assets/demo.cast",
     "assets/demo-transcript.txt", "examples/breast_cancer/*.toml", "datasets/breast_cancer/train.csv",
     "datasets/breast_cancer/valid.csv", "datasets/breast_cancer/test.csv",
 ]
