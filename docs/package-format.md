@@ -54,7 +54,9 @@ Unknown fields are rejected at every level (`deny_unknown_fields`).
    consistency violations in a loaded package are reported as `BML-A006` (exit 5),
    with the underlying rule in the message. The graph must also be row-wise (see
    `docs/architecture.md`).
-8. Test vectors have their widths and tolerances checked. `verify()` runs them
+8. Test vectors have their widths and tolerances checked, and every input and expected
+   value must be finite. A vector whose evaluation fails (for example a non-finite
+   output) or whose difference is not provably within tolerance fails the self-test. `verify()` runs them
    through the full preprocessing + model path. `boundml verify`, `predict`, `serve`
    and the embedding example all run `verify()` after loading.
 

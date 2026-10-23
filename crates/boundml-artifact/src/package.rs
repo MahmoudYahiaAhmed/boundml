@@ -59,6 +59,9 @@ pub struct VerifyReport {
     pub vectors: usize,
     pub max_abs_error: f32,
     pub passed: bool,
+    /// First failing vector or evaluation error, when `passed` is false.
+    #[serde(default)]
+    pub failure: Option<String>,
 }
 
 impl Package {
@@ -130,8 +133,8 @@ impl Package {
         let pre_write = pkg.verify()?;
         if !pre_write.passed {
             return Err(ArtifactError::SelfTest(format!(
-                "outputs differ from the expected test vectors (max abs error {}); nothing was written",
-                pre_write.max_abs_error
+                "outputs differ from the expected test vectors ({}); nothing was written",
+                pre_write.failure.as_deref().unwrap_or("unknown failure")
             )));
         }
         let Package {
@@ -272,24 +275,46 @@ impl Package {
                 vectors: 0,
                 max_abs_error: 0.0,
                 passed: true,
+                failure: None,
             });
         };
-        let got = self.compute_outputs(&tv.inputs)?;
+        let got = match self.compute_outputs(&tv.inputs) {
+            Ok(g) => g,
+            // A vector the model cannot evaluate (e.g. its output overflows to inf/NaN)
+            // is a failed self-test, never a pass.
+            Err(e) => {
+                return Ok(VerifyReport {
+                    vectors: tv.inputs.len(),
+                    max_abs_error: f32::INFINITY,
+                    passed: false,
+                    failure: Some(e.to_string()),
+                });
+            }
+        };
         let mut max_err = 0.0f32;
-        let mut passed = true;
-        for (g, e) in got.iter().zip(&tv.expected) {
+        let mut failure = None;
+        for (row, (g, e)) in got.iter().zip(&tv.expected).enumerate() {
             for (a, b) in g.iter().zip(e) {
                 let err = (a - b).abs();
-                max_err = max_err.max(err);
-                if err > tv.atol + tv.rtol * b.abs() {
-                    passed = false;
+                // NaN anywhere fails: a value only passes if it is finite and within tolerance.
+                if !err.is_finite() || !a.is_finite() || !b.is_finite() {
+                    max_err = f32::INFINITY;
+                    failure.get_or_insert(format!(
+                        "vector {row}: non-finite output {a} or expected {b}"
+                    ));
+                } else {
+                    max_err = max_err.max(err);
+                }
+                if !(err.is_finite() && err <= tv.atol + tv.rtol * b.abs()) {
+                    failure.get_or_insert(format!("vector {row}: got {a}, expected {b}"));
                 }
             }
         }
         Ok(VerifyReport {
             vectors: tv.inputs.len(),
             max_abs_error: max_err,
-            passed,
+            passed: failure.is_none(),
+            failure,
         })
     }
 }
@@ -419,6 +444,17 @@ fn check_test_vectors(m: &Manifest) -> Result<()> {
     if !(tv.atol.is_finite() && tv.atol >= 0.0 && tv.rtol.is_finite() && tv.rtol >= 0.0) {
         return Err(ArtifactError::Inconsistent(
             "test vector tolerances must be finite and >= 0".into(),
+        ));
+    }
+    let bad_input = tv
+        .inputs
+        .iter()
+        .flatten()
+        .any(|v| v.is_some_and(|x| !x.is_finite()));
+    let bad_expected = tv.expected.iter().flatten().any(|v| !v.is_finite());
+    if bad_input || bad_expected {
+        return Err(ArtifactError::Inconsistent(
+            "test vectors must contain only finite inputs and expected outputs".into(),
         ));
     }
     Ok(())

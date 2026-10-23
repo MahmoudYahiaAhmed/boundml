@@ -35,6 +35,8 @@ pub enum ArtifactError {
     SelfTest(String),
     #[error("BML-A008 invalid input row {row}: {message}")]
     Input { row: usize, message: String },
+    #[error("BML-A009 invalid option: {0}")]
+    InvalidOption(String),
     #[error(transparent)]
     Core(#[from] CoreError),
     #[error(transparent)]

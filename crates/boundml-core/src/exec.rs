@@ -142,6 +142,12 @@ impl Executor {
         self.load(self.graph.input(), x, b, "input")?;
         self.forward(params, b)?;
         let r = self.value_range(output, b);
+        // Fail closed: finite weights and inputs can still overflow to inf/NaN. `out`
+        // is left untouched on error so callers never observe non-finite predictions.
+        let cols = n_out / b;
+        if let Some(i) = self.arena[r.clone()].iter().position(|v| !v.is_finite()) {
+            return Err(CoreError::NonFiniteOutput { row: i / cols });
+        }
         out.copy_from_slice(&self.arena[r]);
         Ok(())
     }

@@ -38,6 +38,11 @@ pub enum CoreError {
     },
     #[error("BML-C007 non-finite value encountered in {0}")]
     NonFinite(&'static str),
+    /// Finite weights and inputs can still overflow f32 inside the model.
+    #[error(
+        "BML-C007 non-finite value encountered in model output (row {row} of the batch); the inputs or weights overflow f32"
+    )]
+    NonFiniteOutput { row: usize },
     #[error("BML-C008 class index {value} invalid for {classes} classes (row {row})")]
     ClassIndex {
         value: f32,

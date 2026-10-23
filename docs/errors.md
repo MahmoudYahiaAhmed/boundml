@@ -26,7 +26,7 @@ returns `{"error": {"code", "message"}}`.
 | BML-C004 | core / server | batch outside `1..=max_batch`; send smaller batches or plan a larger `max_batch` |
 | BML-C005 | core | tensor budget exceeded; the message lists requested and available bytes and the largest contributors. Reduce batch, sessions or model width, or raise the budget. Nothing is changed automatically to fit. |
 | BML-C006 | core | buffer length mismatch (API misuse) |
-| BML-C007 | core | non-finite input, target, weight, loss or gradient; clean the data or lower the learning rate |
+| BML-C007 | core | non-finite input, target, weight, loss, gradient **or model output** (finite inputs and weights can overflow f32; the batch fails and no output is written); clean the data, check feature scales, or lower the learning rate |
 | BML-C008 | core | class index not an integer in `0..K` |
 | BML-C009 | core | invalid optimizer hyperparameters |
 | BML-D001 | data | cannot read a data file |
@@ -48,6 +48,7 @@ returns `{"error": {"code", "message"}}`.
 | BML-A005 | artifact | declared or actual file size over the limit, or planned inference tensor memory over the 1 GiB package ceiling |
 | BML-A006 | artifact | internally inconsistent: tensor names/shapes, widths, tolerances, or a graph rule violated (the underlying `BML-C`/`BML-D` code is in the message) |
 | BML-A007 | artifact | self-test failed: outputs differ from bundled test vectors |
+| BML-A009 | artifact | invalid option (e.g. `--max-abs-diff` not finite or negative) |
 | BML-A008 | artifact | invalid input row (missing under `reject`, duplicate or unknown field, non-finite) |
 | BML-M001 | import | invalid or unsupported import bundle (including atol > 1e-3, rtol > 1e-2, or fewer than 4 reference rows) |
 | BML-S001 | server | at capacity (HTTP 503 with `Retry-After: 1`) |

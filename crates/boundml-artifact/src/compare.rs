@@ -12,7 +12,8 @@
 
 use crate::error::{ArtifactError, Result};
 use crate::package::Package;
-use boundml_core::Task;
+use crate::predictor::Predictor;
+use boundml_core::{CoreError, Task};
 use boundml_data::{CsvSource, ExtraColumns, MissingPolicy, RawRow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -69,6 +70,14 @@ pub struct NumericDiff {
     pub metric_name: Option<String>,
     pub current_metric: Option<f64>,
     pub candidate_metric: Option<f64>,
+    /// Rows on which the current package produced a non-finite output (excluded from
+    /// the statistics above).
+    #[serde(default)]
+    pub current_nonfinite_rows: u64,
+    /// Rows on which the candidate produced a non-finite output. Any such row makes
+    /// the verdict breaking.
+    #[serde(default)]
+    pub candidate_nonfinite_rows: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -84,6 +93,13 @@ pub fn compare(
     candidate: &Arc<Package>,
     opts: &CompareOptions,
 ) -> Result<CompareReport> {
+    if let Some(t) = opts.max_abs_diff
+        && !(t.is_finite() && t >= 0.0)
+    {
+        return Err(ArtifactError::InvalidOption(format!(
+            "max_abs_diff must be finite and >= 0, got {t}"
+        )));
+    }
     let (a, b) = (current.manifest(), candidate.manifest());
     let mut changes = Vec::new();
     let mut add = |area: &str, severity: Severity, message: String| {
@@ -345,8 +361,32 @@ pub fn compare(
         },
         None => None,
     };
+    if let Some(n) = &numeric {
+        if n.candidate_nonfinite_rows > 0 {
+            changes.push(Change {
+                area: "numeric".into(),
+                severity: Severity::Breaking,
+                message: format!(
+                    "candidate produces non-finite outputs on {} of {} rows",
+                    n.candidate_nonfinite_rows,
+                    n.rows + n.candidate_nonfinite_rows.max(n.current_nonfinite_rows)
+                ),
+            });
+        }
+        if n.current_nonfinite_rows > 0 {
+            changes.push(Change {
+                area: "numeric".into(),
+                severity: Severity::Warning,
+                message: format!(
+                    "the current package produces non-finite outputs on {} rows",
+                    n.current_nonfinite_rows
+                ),
+            });
+        }
+    }
+    // NaN-safe: anything that is not provably within the threshold is breaking.
     if let (Some(n), Some(t)) = (&numeric, opts.max_abs_diff)
-        && n.max_abs_diff > t
+        && !(n.max_abs_diff.is_finite() && n.max_abs_diff <= t)
     {
         changes.push(Change {
             area: "numeric".into(),
@@ -362,7 +402,11 @@ pub fn compare(
         && weights_equal
         && a.schema == b.schema
         && a.preprocessing == b.preprocessing
-        && numeric.as_ref().is_none_or(|n| n.max_abs_diff == 0.0);
+        && numeric.as_ref().is_none_or(|n| {
+            n.max_abs_diff == 0.0
+                && n.candidate_nonfinite_rows == 0
+                && n.current_nonfinite_rows == 0
+        });
     let verdict = match worst {
         Some(Severity::Breaking) => Verdict::Breaking,
         _ if identical => Verdict::Identical,
@@ -409,6 +453,8 @@ fn numeric_diff(
     let (mut ra, mut rb) = (RawRow::default(), RawRow::default());
     let (mut rows, mut max_abs, mut sum_abs) = (0u64, 0.0f32, 0.0f64);
     let (mut agree, mut score_a, mut score_b) = (0u64, 0.0f64, 0.0f64);
+    let (mut ok_a, mut ok_b) = (vec![true; batch], vec![true; batch]);
+    let (mut nonfinite_a, mut nonfinite_b, mut compared) = (0u64, 0u64, 0u64);
     loop {
         let mut n = 0;
         while n < batch && max_rows.is_none_or(|m| rows + (n as u64) < m) {
@@ -425,13 +471,25 @@ fn numeric_diff(
         if n == 0 {
             break;
         }
-        pa.predict_raw(&raw_a[..n * nfa], n, &mut oa[..n * no])?;
-        pb.predict_raw(&raw_b[..n * nfb], n, &mut ob[..n * no])?;
+        predict_checked(&mut pa, &raw_a[..n * nfa], n, &mut oa[..n * no], &mut ok_a)?;
+        predict_checked(&mut pb, &raw_b[..n * nfb], n, &mut ob[..n * no], &mut ok_b)?;
         for r in 0..n {
+            if !ok_a[r] || !ok_b[r] {
+                nonfinite_a += u64::from(!ok_a[r]);
+                nonfinite_b += u64::from(!ok_b[r]);
+                continue;
+            }
+            compared += 1;
             let (xa, xb) = (&oa[r * no..(r + 1) * no], &ob[r * no..(r + 1) * no]);
             for (u, v) in xa.iter().zip(xb) {
                 let d = (u - v).abs();
-                max_abs = max_abs.max(d);
+                // Outputs are finite here, but stay NaN-safe: a non-finite difference
+                // must dominate the statistic rather than be ignored by `max`.
+                max_abs = if d.is_finite() {
+                    max_abs.max(d)
+                } else {
+                    f32::INFINITY
+                };
                 sum_abs += d as f64;
             }
             let (da, db) = (decision(&ma.task, xa), decision(&ma.task, xb));
@@ -458,6 +516,21 @@ fn numeric_diff(
             format!("{} has no rows", path.display()),
         )));
     }
+    if compared == 0 {
+        // Every row failed in at least one package: there is nothing finite to compare.
+        return Ok(NumericDiff {
+            rows: 0,
+            max_abs_diff: f32::INFINITY,
+            mean_abs_diff: f64::INFINITY,
+            decision_agreement: None,
+            metric_name: None,
+            current_metric: None,
+            candidate_metric: None,
+            current_nonfinite_rows: nonfinite_a,
+            candidate_nonfinite_rows: nonfinite_b,
+        });
+    }
+    let rows = compared;
     let classification = ma.task != Task::Regression;
     let (metric_name, ca, cb) = if !labels {
         (None, None, None)
@@ -482,7 +555,41 @@ fn numeric_diff(
         metric_name,
         current_metric: ca,
         candidate_metric: cb,
+        current_nonfinite_rows: nonfinite_a,
+        candidate_nonfinite_rows: nonfinite_b,
     })
+}
+
+/// Predict a batch; if the model overflows to a non-finite output, fall back to one
+/// row at a time so that `ok[r]` marks exactly which rows are usable. Any other error
+/// (invalid input, missing value) is propagated.
+fn predict_checked(
+    p: &mut Predictor,
+    raw: &[Option<f64>],
+    n: usize,
+    out: &mut [f32],
+    ok: &mut [bool],
+) -> Result<()> {
+    let (nf, no) = (p.n_features(), p.output_cols());
+    ok[..n].iter_mut().for_each(|v| *v = true);
+    match p.predict_raw(raw, n, out) {
+        Ok(()) => Ok(()),
+        Err(ArtifactError::Core(CoreError::NonFiniteOutput { .. })) => {
+            for r in 0..n {
+                match p.predict_raw(
+                    &raw[r * nf..(r + 1) * nf],
+                    1,
+                    &mut out[r * no..(r + 1) * no],
+                ) {
+                    Ok(()) => {}
+                    Err(ArtifactError::Core(CoreError::NonFiniteOutput { .. })) => ok[r] = false,
+                    Err(e) => return Err(e),
+                }
+            }
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Predicted class (classification) or 0 (regression).
