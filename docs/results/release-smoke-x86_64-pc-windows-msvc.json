@@ -4,7 +4,7 @@
  "steps": [
   {
    "step": "extract archive",
-   "seconds": 0.048238299998047296,
+   "seconds": 0.039719799999147654,
    "exit": 0
   },
   {
@@ -17,16 +17,16 @@
   {
    "step": "version",
    "command": "boundml --version",
-   "seconds": 0.14735040000232402,
+   "seconds": 0.165567000003648,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "boundml 0.1.0 (revision 5d13753cbb, x86_64-pc-windows-msvc)"
+   "output": "boundml 0.1.0 (revision 9490f1d280, x86_64-pc-windows-msvc)"
   },
   {
    "step": "init",
    "command": "boundml init demo",
-   "seconds": 0.015805399998498615,
+   "seconds": 0.011650200001895428,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -35,7 +35,7 @@
   {
    "step": "validate",
    "command": "boundml validate demo/model.toml",
-   "seconds": 0.028001300001051277,
+   "seconds": 0.022989299992332235,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -44,16 +44,16 @@
   {
    "step": "train",
    "command": "boundml train demo/model.toml --checkpoint demo/ckpt --quiet",
-   "seconds": 0.19358520000241697,
+   "seconds": 0.18764839999494143,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "training complete after 1890 steps in 0.17s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
+   "output": "training complete after 1890 steps in 0.18s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
   },
   {
    "step": "evaluate",
    "command": "boundml evaluate demo/ckpt --data demo/data/test.csv",
-   "seconds": 0.035462899999402,
+   "seconds": 0.027562399991438724,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -62,7 +62,7 @@
   {
    "step": "pack",
    "command": "boundml pack demo/ckpt --out demo/model.boundml",
-   "seconds": 0.03221330000087619,
+   "seconds": 0.026421699993079528,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -71,7 +71,7 @@
   {
    "step": "verify",
    "command": "boundml verify demo/model.boundml",
-   "seconds": 0.014377800005604513,
+   "seconds": 0.008436499992967583,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -80,7 +80,7 @@
   {
    "step": "predict",
    "command": "boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3",
-   "seconds": 0.01632170000084443,
+   "seconds": 0.010406399989733472,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -89,7 +89,7 @@
   {
    "step": "budget failure",
    "command": "boundml plan demo/model.toml --mode infer --tensor-budget 64KiB",
-   "seconds": 0.014496499999950174,
+   "seconds": 0.008544700001948513,
    "exit": 4,
    "expected_exit": 4,
    "passed": true,
@@ -98,26 +98,26 @@
   {
    "step": "real data: train",
    "command": "boundml train <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\examples\\breast_cancer\\linear.toml --checkpoint bc/ckpt --quiet",
-   "seconds": 0.4642524000009871,
+   "seconds": 0.43852930000866763,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "training complete after 960 steps in 0.45s; checkpoint: bc/ckpt\nfinal epoch: train_loss=0.04783  valid: accuracy=0.9872 f1=0.9818 log_loss=0.0250 precision=0.9643 recall=1.0000"
+   "output": "training complete after 960 steps in 0.43s; checkpoint: bc/ckpt\nfinal epoch: train_loss=0.04783  valid: accuracy=0.9872 f1=0.9818 log_loss=0.0250 precision=0.9643 recall=1.0000"
   },
   {
    "step": "real data: evaluate",
    "command": "boundml evaluate bc/ckpt --data <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv",
-   "seconds": 0.038550600002054125,
+   "seconds": 0.026813400007085875,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
    "output": "metrics on <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv:\n  accuracy       0.9597   (constant baseline 0.5806)\n  f1             0.9495   (constant baseline 0.0000)\n  log_loss       0.1379   (constant baseline 0.6870)\n  precision      1.0000   (constant baseline 0.0000)\n  recall         0.9038   (constant baseline 0.0000)\n  rows         124.0000   (constant baseline 124.0000)"
   }
  ],
- "seconds_init_to_first_prediction": 0.2579256000026362,
- "seconds_extract": 0.048238299998047296,
- "sha256": "7165f1f4ccc5589397c7495bff2e9d47c65f34735f6e06505b5f1a637236847c",
- "bytes": 2162604,
+ "seconds_init_to_first_prediction": 0.23612669997964986,
+ "seconds_extract": 0.039719799999147654,
+ "sha256": "4b72e00c29fc7bcf3966fa8b4af49753180f6f4e662f3a04827c0ca806c4d9b8",
+ "bytes": 2147088,
  "target": "x86_64-pc-windows-msvc",
  "built_on": "Windows-11-10.0.26200-SP0",
  "version": "0.1.0"
