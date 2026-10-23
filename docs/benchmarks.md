@@ -185,9 +185,10 @@ Sizes: `boundml` binary 4.1 MB; package 17.5 KB (includes schema, preprocessing,
   tract is about 3.2× faster than BoundML on the 30-feature model and 2.5× faster on
   the 11-feature model; ONNX Runtime is about 2.4× and 2.1× faster. With
   preprocessing included, tract stays about 2.1–2.3× ahead and ONNX Runtime about
-  1.4–1.5×. Pre-declared target T3 is met only as originally defined (raw input
-  including preprocessing: 71% and 68% of ONNX Runtime). **Model only, BoundML reaches
-  42% and 48%, below the 50% threshold.** The previous measurement reported about 50%
+  1.4–1.5×. Pre-declared target T3 ("batch-256 throughput ≥ 50% of
+  ONNX Runtime's") does not say whether preprocessing is included, so both readings
+  are reported and neither is chosen after the fact: including preprocessing, BoundML
+  reaches 71% and 68% (met); **model only, 42% and 48% (not met)**. The previous measurement reported about 50%
   model only; that figure included a float64→float32 conversion inside ONNX Runtime's
   timed call, which this run removes. BoundML uses straightforward single-threaded
   loops: no packed GEMM, explicit SIMD, `target-cpu=native` or threads. If you score
@@ -245,12 +246,12 @@ evaluated per dataset with the measurement the target names.
 |---|---|---|---|---|
 | T1 memory | Breast cancer | ≤ 20% of PyTorch peak | 3.1% | **met** |
 | T2 cold start | Breast cancer | ≤ 10% of PyTorch | 0.7% | **met** |
-| T3 throughput | Breast cancer | ≥ 50% of ORT batch-256, raw input incl. preprocessing (as originally measured) | 71% (model only: 42%) | **met**; the model-only ratio is **below** 50%, so a model-only reading of T3 is not met |
+| T3 throughput | Breast cancer | ≥ 50% of ORT batch-256 rows/s (the pre-declared text does not say whether preprocessing is included, so both readings are shown) | incl. preprocessing 71% (**met**); model only 42% (**not met**) | **met** only if preprocessing is included |
 | T4 training | Breast cancer | `boundml train` ≤ 2× PyTorch 1-thread | 1.12× | **met** |
 | T5 quality | Breast cancer | within 2 pp of PyTorch | +0.0 pp accuracy | **met** |
 | T1 memory | Wine quality | ≤ 20% of PyTorch peak | 3.1% | **met** |
 | T2 cold start | Wine quality | ≤ 10% of PyTorch | 0.8% | **met** |
-| T3 throughput | Wine quality | ≥ 50% of ORT batch-256, raw input incl. preprocessing (as originally measured) | 68% (model only: 48%) | **met**; the model-only ratio is **below** 50%, so a model-only reading of T3 is not met |
+| T3 throughput | Wine quality | ≥ 50% of ORT batch-256 rows/s (the pre-declared text does not say whether preprocessing is included, so both readings are shown) | incl. preprocessing 68% (**met**); model only 48% (**not met**) | **met** only if preprocessing is included |
 | T4 training | Wine quality | `boundml train` ≤ 2× PyTorch 1-thread | 0.36× | **met** |
 | T5 quality | Wine quality | within 10% RMSE of PyTorch | RMSE 0.6635 vs 0.6592 (+0.7%) | **met** |
 <!-- TARGETS:END -->

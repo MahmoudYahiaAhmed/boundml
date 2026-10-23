@@ -21,6 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.94.0
+      # The crate READMEs link to ../../docs/*.md; crates.io resolves relative links
+      # only against the crate's `repository` URL, so refuse to publish without one.
+      - name: Require repository metadata
+        run: |
+          cargo metadata --format-version 1 --no-deps | python3 -c '
+          import json, sys
+          crates = {"boundml-core", "boundml-data", "boundml-artifact", "boundml-train", "boundml-cli"}
+          missing = [p["name"] for p in json.load(sys.stdin)["packages"] if p["name"] in crates and not p.get("repository")]
+          sys.exit(f"set `repository` in Cargo.toml first (README links depend on it): {missing}" if missing else 0)'
       - name: Publish in dependency order
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

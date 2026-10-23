@@ -131,12 +131,14 @@ def targets() -> str:
         else:
             q, ok5, thr5 = f"RMSE {qb:.4f} vs {qp:.4f} ({(qb / qp - 1) * 100:+.1f}%)", abs(qb / qp - 1) <= 0.10, "within 10% RMSE"
         ds = TITLES.get(name, name).split(" (")[0]
-        note = ("; model only is also at or above 50%" if r3c >= 0.5
-                else "; the model-only ratio is **below** 50%, so a model-only reading of T3 is not met")
+        both = (f"incl. preprocessing {r3 * 100:.0f}% ({verdict(r3 >= 0.50)}); "
+                f"model only {r3c * 100:.0f}% ({verdict(r3c >= 0.50)})")
         out += [
             f"| T1 memory | {ds} | ≤ 20% of PyTorch peak | {r1 * 100:.1f}% | {verdict(r1 <= 0.20)} |",
             f"| T2 cold start | {ds} | ≤ 10% of PyTorch | {r2 * 100:.1f}% | {verdict(r2 <= 0.10)} |",
-            f"| T3 throughput | {ds} | ≥ 50% of ORT batch-256, raw input incl. preprocessing (as originally measured) | {r3 * 100:.0f}% (model only: {r3c * 100:.0f}%) | {verdict(r3 >= 0.50)}{note} |",
+            f"| T3 throughput | {ds} | ≥ 50% of ORT batch-256 rows/s (the pre-declared text does not say whether "
+            f"preprocessing is included, so both readings are shown) | {both} | "
+            f"{'**met under both readings**' if min(r3, r3c) >= 0.50 else '**met** only if preprocessing is included' if r3 >= 0.50 else '**not met**'} |",
             f"| T4 training | {ds} | `boundml train` ≤ 2× PyTorch 1-thread | {r4:.2f}× | {verdict(r4 <= 2.0)} |",
             f"| T5 quality | {ds} | {thr5} of PyTorch | {q} | {verdict(ok5)} |",
         ]
