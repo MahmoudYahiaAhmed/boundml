@@ -171,18 +171,20 @@ runs each. Full tables, methodology and raw JSON: [docs/benchmarks.md](docs/benc
 <!-- README-BENCH:BEGIN -->
 | 30-feature MLP, breast-cancer data | BoundML | tract (Rust) | ONNX Runtime (Python) | PyTorch (Python) |
 |---|---|---|---|---|
-| Process start → first prediction | **9.1 ms** | 11.2 ms | 211.9 ms | 1.49 s |
-| Peak process working set | **6.3 MiB** | 9.5 MiB | 51.4 MiB | 202.4 MiB |
-| 1-row latency, p50, incl. preprocessing | **0.3 µs** | 1.7 µs | 9.9 µs | 27.5 µs |
-| Batch-256 throughput, model only | 8.8 M rows/s | **28.8 M rows/s** | 17.6 M rows/s | 6.0 M rows/s |
-| Batch-256 throughput, incl. preprocessing | 7.1 M rows/s | **15.6 M rows/s** | 10.0 M rows/s | 4.1 M rows/s |
+| Process start → first prediction | **11.4 ms** | 13.4 ms | 213.9 ms | 1.57 s |
+| Peak process memory (Windows peak working set) | **6.3 MiB** | 10.1 MiB | 51.5 MiB | 203.0 MiB |
+| 1-row latency, p50, incl. preprocessing | **0.4 µs** | 1.8 µs | 10.2 µs | 27.8 µs |
+| Batch-256 throughput, model only | 8.7 M rows/s | **27.5 M rows/s** | 20.6 M rows/s | 6.9 M rows/s |
+| Batch-256 throughput, incl. preprocessing | 6.4 M rows/s | **13.8 M rows/s** | 9.1 M rows/s | 4.0 M rows/s |
 <!-- README-BENCH:END -->
 
 **tract and ONNX Runtime are faster on large batches.** BoundML's kernels are simple
-and single-threaded. It is ahead on start-up, memory and single-row calls, and the
-Python numbers include interpreter overhead. Trained-model quality matches PyTorch
-on both datasets (Burn reached a lower RMSE on wine), and the MLP did not beat linear
-models on either
+and single-threaded: model only, it reaches 42–48% of ONNX Runtime's batch-256
+throughput (68–71% with preprocessing included). It is ahead on start-up, memory and
+single-row calls, and the Python numbers include interpreter overhead. Every runtime's
+outputs were checked against BoundML's for every test row before timing. Trained from
+identical initial weights and batch order, BoundML and PyTorch reach the same test
+metric to four decimals. The MLP did not beat linear models on either dataset
 ([walkthroughs](docs/walkthroughs.md)). The memory guarantee covers **planned tensor
 storage** for a declared batch size and session count, not whole-process memory.
 

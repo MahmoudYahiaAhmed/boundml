@@ -16,8 +16,8 @@ and library that:
 
 What I measured, on one machine and the same weights:
 • 9 ms from process start to first prediction (Python + PyTorch: 1.49 s)
-• 6.3 MiB peak process memory (PyTorch: 202 MiB)
-• tract, a mature Rust runtime, is 2.5–3.3× faster on large batches. That's in
+• 6.3 MiB peak process memory (PyTorch: 203 MiB)
+• tract, a mature Rust runtime, is 2.5–3.2× faster on large batches. That's in
   the benchmarks too.
 
 It's an early release. CPU only, Windows-tested so far, small models only, and no

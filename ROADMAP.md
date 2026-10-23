@@ -10,7 +10,7 @@ issue template). Nothing below is a commitment or a date.
 - **Faster `boundml train` on small data**: optionally keep the parsed training set
   in memory when it fits a declared budget. Today the per-epoch CSV parse dominates
   training time ([benchmarks](docs/benchmarks.md)).
-- **Faster batch inference**: blocked/SIMD matmul. tract is currently 2.5–3.3× faster
+- **Faster batch inference**: blocked/SIMD matmul. tract is currently 2.5–3.2× faster
   on 256-row batches (model only).
 - Early stopping on a validation metric, and a learning-rate schedule.
 - `boundml compare` thresholds for metric regressions, not only output drift.

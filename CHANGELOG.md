@@ -52,6 +52,30 @@ breaking changes; they are called out under **Breaking**.
   JSON keys are rejected.
 - Resume also checks the validation file. JSON floats round-trip exactly.
 
+### Fixed before release (source review)
+- **Breaking:** inference fails closed with `BML-C007` when any output is not
+  finite (CLI exit 3, HTTP 422, no partial output file). `verify` fails when a
+  self-test output is non-finite, and packages with non-finite test vectors are
+  rejected. `compare` treats non-finite outputs as breaking and rejects invalid
+  thresholds (`BML-A009`).
+- Temporary files are created exclusively under unique names next to the
+  destination and committed by rename. A failed run never deletes or replaces an
+  existing file it did not create, and `predict`/`split` refuse an output path that
+  is the input.
+- **Breaking:** the declared `bounds.sessions` is enforced per loaded package: a
+  `Predictor` beyond the allowance fails with `BML-A010` (exit 4) before allocating.
+  `Predictor` stages preprocessing directly into the planned arena. Training plans
+  also budget the validation arena and batch staging buffers, and report the
+  data-loader buffer.
+- Package loading validates the graph, tensor declarations, consistency, test
+  vectors and the declared weight size before reading the weight payload.
+- Preprocessing checks exact input and output lengths. The server keeps a compute
+  slot until a timed-out computation really finishes, replaces a predictor after a
+  panic, and reports `usable_workers` in `/readyz` (503 when none is usable).
+- Benchmarks are gated on elementwise output parity across runtimes, keep every
+  run's record, and compare training from identical initial weights and batch
+  order. Earlier results are preserved under `docs/results/history/`.
+
 ### Known limitations
 See [docs/release-status.md](docs/release-status.md): CPU only, single-threaded
 kernels, only Windows x86_64 built and tested, and no external user evaluations yet.

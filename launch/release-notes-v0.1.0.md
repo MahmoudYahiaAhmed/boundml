@@ -48,9 +48,9 @@ it and run `boundml --version`. PowerShell and bash steps, plus updating and rem
 - Two UCI datasets: models beat constant baselines. The MLP does **not** beat a linear
   model on either one.
 - Against tract, ONNX Runtime and PyTorch on the same weights:
-  - BoundML is ahead on start-up (9 ms), process memory (6.3 MiB) and
-    single-row latency (0.3 µs per row).
-  - **tract is 2.5–3.3× faster on 256-row batches.**
+  - BoundML is ahead on start-up (about 11 ms), process memory (6.3 MiB) and
+    single-row latency (about 0.4 µs per row).
+  - **tract is 2.5–3.2× faster on 256-row batches.**
   - Full data: `docs/benchmarks.md` in the repository.
 - Five-minute stress test with concurrent sessions, reloads and train/resume cycles:
   no drift, flat memory.

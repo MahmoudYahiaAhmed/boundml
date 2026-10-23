@@ -19,7 +19,7 @@ What might interest Rust folks:
 - `compare` gives a breaking/compatible verdict for model updates.
 
 Honest limits:
-- single-threaded scalar kernels, so tract is 2.5–3.3× faster on 256-row batches;
+- single-threaded scalar kernels, so tract is 2.5–3.2× faster on 256-row batches;
 - only Windows has been built and tested by me;
 - early release, no users yet.
 
