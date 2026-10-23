@@ -8,7 +8,7 @@ Two paths, both from a release archive or a source install (see [install.md](ins
 Outputs below are copied from a real run (`assets/demo-transcript.txt`). Timings
 differ between machines; metrics are deterministic for a given binary and platform.
 
-Measured time to the first prediction with a prebuilt Windows archive: **0.02 s** to extract the archive with Python's `zipfile` (about 0.5 s with PowerShell's `Expand-Archive`), then **0.22 s** for `init`, `train`, `pack` and `predict` together (train 0.17 s), measured by `scripts/release.py` on the machine described in [benchmarks.md](benchmarks.md). Downloading the archive (about 1.6 MB) and reading these instructions take longer than running them. A source build (`cargo install`) adds the compile time measured in [install.md](install.md).
+Measured time to the first prediction with a prebuilt Windows archive: **0.02 s** to extract the archive with Python's `zipfile` (about 0.5 s with PowerShell's `Expand-Archive`), then **0.22 s** for `init`, `train`, `pack` and `predict` together (train 0.17 s), measured by `scripts/release.py` on the machine described in [benchmarks.md](benchmarks.md). Downloading the archive (about 2.1 MB) and reading these instructions take longer than running them. A source build (`cargo install`) adds the compile time measured in [install.md](install.md).
 
 ## Path 1 — CLI
 
