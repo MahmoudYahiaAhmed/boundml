@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
       # The crate READMEs link to ../../docs/*.md; crates.io resolves relative links
       # only against the crate's `repository` URL, so refuse to publish without one.
       - name: Require repository metadata
