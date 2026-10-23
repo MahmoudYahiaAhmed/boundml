@@ -35,18 +35,31 @@ Also checked on Linux, **not** in CI: WSL2 Ubuntu 24.04 on the same machine (gcc
 binutils 2.42, Rust 1.94.0, no compiler or linker overrides). `cargo test --workspace
 --locked` passed 100 of 100 tests, on both ext4 and the Windows-mounted filesystem;
 `cargo build --release`, `clippy -D warnings` and `fmt --check` passed. An external
-reviewer saw a zero-length object-file error from the default Linux build, which went
-away with compiler overrides. That error was **not reproduced** here, so its cause is
-still unknown. The usual causes are a full disk or temporary directory, an
-interrupted build that left a truncated object, or a filesystem- or linker-specific
-problem. Their exact environment is needed to close it.
+reviewer's default Linux build failed while archiving `boundml-train` with `failed
+to map object file: memory map must have a non-zero length`. It passed with
+`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=2`, `CARGO_PROFILE_TEST_CODEGEN_UNITS=1` and
+`CARGO_PROFILE_TEST_DEBUG=0`. That error was **not reproduced** here. These cases were
+tested on the unchanged tree:
+
+- target directory on a 1 GiB filesystem: fails with `No space left on device`;
+- rebuilding after enlarging it, with and without incremental compilation: 101/101;
+- default build under a 2 GiB memory cap: 101/101;
+- default build under a 768 MiB cap: killed by the cap;
+- rebuilding in the same target directory after that: 101/101.
+
+A full disk and a killed build both left zero-length objects behind, but each next
+build replaced them. The project has no build scripts or codegen settings involved.
+The most likely cause is the reviewer's environment, for example a sandboxed
+filesystem where a newly written object's size is not yet visible when rustc maps
+it, which fewer parallel jobs and codegen units would make rarer. That is not
+confirmed. Closing it needs a reproduction in that environment.
 
 ## Not verified — depends on things outside this machine
 
 | Item | Depends on |
 |---|---|
 | Linux and macOS builds, tests and archives in CI (the default GitHub runners) | first observed run of `ci.yml` / `release.yml` on GitHub; the WSL run above does not stand in for it |
-| The reviewer's Linux object-file error | the reviewer's environment details; not reproduced locally |
+| The reviewer's Linux object-file error | a reproduction in the reviewer's environment (filesystem type, container runtime, limits); not reproduced locally under disk or memory exhaustion |
 | CI status of any kind | adding a remote and pushing branch `main` (the branch `ci.yml` triggers on); **no workflow has ever run** |
 | crates.io packages (`cargo install boundml-cli`) | publishing in order core → data → artifact → train → cli; dependent dry-runs fail until their dependencies are on crates.io |
 | Private vulnerability reporting route | enabling it in repository settings |
