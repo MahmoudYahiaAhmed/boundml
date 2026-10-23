@@ -15,9 +15,9 @@ and library that:
 → tells CI whether a model update is compatible or breaking
 
 What I measured, on one machine and the same weights:
-• {{COLD_B}} from process start to first prediction (Python + PyTorch: {{COLD_P}})
-• {{MEM_B}} peak process memory (PyTorch: {{MEM_P}})
-• tract, a mature Rust runtime, is {{TRACT_X}}× faster on large batches. That's in
+• 9 ms from process start to first prediction (Python + PyTorch: 1.49 s)
+• 6.3 MiB peak process memory (PyTorch: 202 MiB)
+• tract, a mature Rust runtime, is 2.5–3.3× faster on large batches. That's in
   the benchmarks too.
 
 It's an early release. CPU only, Windows-tested so far, small models only, and no

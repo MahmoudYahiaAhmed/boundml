@@ -30,12 +30,12 @@ p.predict_raw(&raw, 1, &mut out)?;
 ```
 
 What it is **not**: a PyTorch replacement, a GPU framework, or the fastest batch
-runtime. tract is {{TRACT_X}}× faster than BoundML on 256-row batches in my
+runtime. tract is 2.5–3.3× faster than BoundML on 256-row batches in my
 benchmarks, and the benchmark page says so. BoundML is ahead on start-up, memory and
 single-row calls, and it removes the glue code.
 
-Everything is reproducible: [benchmarks](../docs/benchmarks.md), [what's verified
-and what isn't](../docs/release-status.md). It has only been built and tested on
+Everything is reproducible: [benchmarks](docs/benchmarks.md), [what's verified
+and what isn't](docs/release-status.md). It has only been built and tested on
 Windows so far.
 
 I'm looking for people with real workloads to try it and tell me what blocks them.

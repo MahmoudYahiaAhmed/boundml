@@ -8,7 +8,7 @@ Python, ML framework or network.
 ## What you can do with it
 
 - `boundml init demo` → `train` → `evaluate` → `pack` → `predict`: a first prediction
-  in about {{FIRST_PREDICTION}} from a prebuilt archive (measured below).
+  in about a second of execution time from a prebuilt archive (measured by the release smoke test).
 - Embed packages in Rust with `boundml-artifact::Predictor`. Features are given by name,
   the fitted preprocessing is applied for you, and each call allocates nothing.
 - Know the planned tensor memory before anything is allocated (`boundml plan`); budgets
@@ -27,7 +27,7 @@ CPU only.
 
 Download the archive for your platform below, check it against `SHA256SUMS`, extract
 it and run `boundml --version`. PowerShell and bash steps, plus updating and removal:
-[docs/install.md](../docs/install.md). From source:
+`docs/install.md` in the repository. From source:
 `cargo install --path crates/boundml-cli --locked`. Not yet on crates.io.
 
 | Archive | Status |
@@ -43,22 +43,22 @@ it and run `boundml --version`. PowerShell and bash steps, plus updating and rem
 - Bitwise-identical parameters after interrupted-and-resumed training.
 - Bitwise-identical predictions across the Rust API, the CLI and HTTP.
 - No heap allocation in prediction or training steps after setup.
-- PyTorch and Keras dense models import within {{MIGRATION_MAX}} max output
+- PyTorch and Keras dense models import within 1.2e-06 max output
   difference.
 - Two UCI datasets: models beat constant baselines. The MLP does **not** beat a linear
   model on either one.
 - Against tract, ONNX Runtime and PyTorch on the same weights:
-  - BoundML is ahead on start-up ({{COLD_B}}), process memory ({{MEM_B}}) and
-    single-row latency ({{LAT_B}}).
-  - **tract is {{TRACT_X}}× faster on 256-row batches.**
-  - Full data: [docs/benchmarks.md](../docs/benchmarks.md).
+  - BoundML is ahead on start-up (9 ms), process memory (6.3 MiB) and
+    single-row latency (0.3 µs per row).
+  - **tract is 2.5–3.3× faster on 256-row batches.**
+  - Full data: `docs/benchmarks.md` in the repository.
 - Five-minute stress test with concurrent sessions, reloads and train/resume cycles:
   no drift, flat memory.
 
 ## Known limitations
 
 - Single-threaded scalar kernels.
-- Only Windows x86_64 has been built and tested by a person.
+- Only Windows x86_64 has been built and tested outside CI.
 - `boundml train` re-parses the CSV every epoch (slow on small data).
 - No categorical features or trees.
 - Checksums detect corruption but do not authenticate.
