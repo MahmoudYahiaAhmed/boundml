@@ -118,6 +118,19 @@ impl Package {
         } = pkg;
         manifest.test_vectors = vectors;
         check_test_vectors(&manifest)?;
+        // Self-test in memory first so a failing package is never written.
+        let pkg = Package { manifest, model };
+        let pre_write = pkg.verify()?;
+        if !pre_write.passed {
+            return Err(ArtifactError::SelfTest(format!(
+                "outputs differ from the expected test vectors (max abs error {}); nothing was written",
+                pre_write.max_abs_error
+            )));
+        }
+        let Package {
+            mut manifest,
+            model,
+        } = pkg;
 
         let g = model.graph();
         let named: Vec<(String, [usize; 2], &[f32])> = (0..g.params().len())

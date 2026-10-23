@@ -1,11 +1,26 @@
 [package]
 name = "boundml-cli"
+default-run = "boundml"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = "0.8.9"
+boundml-artifact = { version = "0.1.0", path = "../boundml-artifact" }
+boundml-core = { version = "0.1.0", path = "../boundml-core" }
+boundml-data = { version = "0.1.0", path = "../boundml-data" }
+boundml-train = { version = "0.1.0", path = "../boundml-train" }
 clap = { version = "4.6.7", features = ["derive"] }
+csv = "1.4.0"
 ctrlc = "3.5.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-tiny_http = "0.12.0"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal", "net", "time", "sync"] }
+tower-http = { version = "0.7.1", features = ["timeout", "limit"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[[bin]]
+name = "boundml"
+path = "src/main.rs"
