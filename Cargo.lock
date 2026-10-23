@@ -189,8 +189,12 @@ dependencies = [
 name = "boundml-train"
 version = "0.1.0"
 dependencies = [
+ "boundml-artifact",
+ "boundml-core",
+ "boundml-data",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "toml",
 ]

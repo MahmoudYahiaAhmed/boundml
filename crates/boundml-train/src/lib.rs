@@ -1,14 +1,15 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! BoundML training: declarative configuration, the training loop, metrics,
+//! resumable checkpoints and packaging into inference artifacts.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod checkpoint;
+pub mod config;
+mod error;
+pub mod metrics;
+pub mod pack;
+pub mod trainer;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use checkpoint::{Checkpoint, EpochRecord};
+pub use config::TrainConfig;
+pub use error::{Result, TrainError};
+pub use pack::{Evaluation, evaluate, pack};
+pub use trainer::{TrainEvent, TrainOptions, TrainOutcome, plan_inference, plan_training, train};
