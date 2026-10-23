@@ -198,7 +198,7 @@ storage** for a declared batch size and session count, not whole-process memory.
 | Training | SGD (momentum, L2), AdamW, minibatches, exact checkpoint/resume |
 | Run | Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
 | Import | dense PyTorch `nn.Sequential` / Keras `Sequential`, checked against the source framework ([migrate/](migrate/README.md)) |
-| Platforms | Windows x86_64 built and tested; Linux x86_64 and macOS arm64 configured in CI, **not yet observed** |
+| Platforms | Windows x86_64 built, tested and archive smoke-tested (beta scope); Linux x86_64 source build and tests passed locally under WSL2 only; Linux and macOS arm64 CI and archives configured, **not yet observed** |
 | Not supported | GPU, CNN/RNN/transformers, trees, categorical features, arbitrary ONNX, wasm/no_std |
 
 ## Documentation
