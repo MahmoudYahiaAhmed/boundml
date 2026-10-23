@@ -182,7 +182,7 @@ Checksums detect corruption; they do not prove who made the package. Details:
 | If you need… | Consider | Why BoundML might still fit |
 |---|---|---|
 | Large or GPU models, many layer types | PyTorch, Burn, Candle | It doesn't; BoundML is deliberately small |
-| Fastest CPU inference of an ONNX model in Rust | tract, ONNX Runtime | They have faster batch kernels (below). BoundML adds the bundled schema/preprocessing/self-test/memory contract and trains natively |
+| Fastest CPU inference of an ONNX model | ONNX Runtime, tract | They have faster batch kernels (below). BoundML adds the bundled schema/preprocessing/self-test/memory contract and trains natively |
 | Classical ML (trees, SVMs, clustering) in Rust | Linfa, SmartCore, Aprender | BoundML has dense models only; it adds packaging with preprocessing and compatibility checks |
 | Memory-planned mobile deployment of PyTorch models | ExecuTorch | BoundML targets Rust applications and tabular inputs with no Python in the workflow |
 
@@ -193,18 +193,18 @@ One machine (Ryzen 7 8700F, Windows 11), the same weights in every runtime, five
 runs each. Full tables, methodology and raw JSON: [docs/benchmarks.md](docs/benchmarks.md).
 
 <!-- README-BENCH:BEGIN -->
-| 30-feature MLP, breast-cancer data | BoundML | tract (Rust) | ONNX Runtime (Python) | PyTorch (Python) |
-|---|---|---|---|---|
-| Process start → first prediction | **11.4 ms** | 13.4 ms | 213.9 ms | 1.57 s |
-| Peak process memory (Windows peak working set) | **6.3 MiB** | 10.1 MiB | 51.5 MiB | 203.0 MiB |
-| 1-row latency, p50, incl. preprocessing | **0.4 µs** | 1.8 µs | 10.2 µs | 27.8 µs |
-| Batch-256 throughput, model only | 8.7 M rows/s | **27.5 M rows/s** | 20.6 M rows/s | 6.9 M rows/s |
-| Batch-256 throughput, incl. preprocessing | 6.4 M rows/s | **13.8 M rows/s** | 9.1 M rows/s | 4.0 M rows/s |
+| 30-feature MLP, breast-cancer data | BoundML | ONNX Runtime (Python) | PyTorch (Python) |
+|---|---|---|---|
+| Process start → first prediction | **5.5 ms** | 187.0 ms | 1.40 s |
+| Peak process memory (OS high-water mark) | **5.7 MiB** | 50.1 MiB | 201.4 MiB |
+| 1-row latency, p50, incl. preprocessing | **0.3 µs** | 9.8 µs | 26.9 µs |
+| Batch-256 throughput, model only | 9.0 M rows/s | **21.5 M rows/s** | 7.4 M rows/s |
+| Batch-256 throughput, incl. preprocessing | 7.0 M rows/s | **10.1 M rows/s** | 4.6 M rows/s |
 <!-- README-BENCH:END -->
 
-**tract and ONNX Runtime are faster on large batches.** BoundML's kernels are simple
-and single-threaded: model only, it reaches 42–48% of ONNX Runtime's batch-256
-throughput (68–71% with preprocessing included). It is ahead on start-up, memory and
+**ONNX Runtime is faster on large batches.** BoundML's kernels are simple and
+single-threaded: model only, it reaches 42–51% of ONNX Runtime's batch-256
+throughput (67–70% with preprocessing included). It is ahead on start-up, memory and
 single-row calls, and the Python numbers include interpreter overhead. Every runtime's
 outputs were checked against BoundML's for every test row before timing. Trained from
 identical initial weights and batch order, BoundML and PyTorch reach the same test
