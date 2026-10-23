@@ -1,14 +1,19 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! BoundML artifacts: versioned inference packages, the embeddable [`Predictor`],
+//! package comparison, and file utilities used by checkpoints.
+//!
+//! Trust model: SHA-256 hashes detect accidental corruption and truncation. They do
+//! **not** authenticate the publisher; anyone who can write the package can rewrite
+//! its hashes. Packages contain no executable code. See `docs/package-format.md`.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod compare;
+mod error;
+pub mod fsutil;
+pub mod manifest;
+mod package;
+mod predictor;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use compare::{CompareOptions, CompareReport, Verdict, compare};
+pub use error::{ArtifactError, Result};
+pub use manifest::{Bounds, DataRef, Manifest, Provenance, TestVectors};
+pub use package::{Package, PackageSpec, VerifyReport};
+pub use predictor::Predictor;

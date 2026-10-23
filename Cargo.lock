@@ -141,11 +141,14 @@ dependencies = [
 name = "boundml-artifact"
 version = "0.1.0"
 dependencies = [
+ "boundml-core",
+ "boundml-data",
  "hex",
  "safetensors",
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "thiserror",
 ]
 
@@ -174,8 +177,11 @@ dependencies = [
 name = "boundml-data"
 version = "0.1.0"
 dependencies = [
+ "boundml-core",
  "csv",
  "serde",
+ "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
