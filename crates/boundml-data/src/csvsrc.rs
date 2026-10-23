@@ -1,8 +1,10 @@
 use crate::error::{DataError, Result};
+use crate::limit::{PARSER_BUFFER, RecordLimit, reset};
 use crate::schema::{ExtraColumns, LabelKind, Schema};
 use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 /// Maximum number of header columns accepted.
 pub const MAX_COLUMNS: usize = 100_000;
@@ -20,10 +22,13 @@ pub struct RawRow {
     pub line: u64,
 }
 
-/// Streams rows of a CSV file through a [`Schema`]. Memory is bounded by one record.
+/// Streams rows of a CSV file through a [`Schema`]. Memory is bounded by one record
+/// of at most [`MAX_RECORD_BYTES`] plus the parser's 64 KiB buffer; longer records
+/// (including an unterminated quote) fail while reading.
 pub struct CsvSource {
     path: String,
-    reader: csv::Reader<BufReader<File>>,
+    reader: csv::Reader<RecordLimit<File>>,
+    consumed: Arc<AtomicU64>,
     record: csv::StringRecord,
     feat_idx: Vec<usize>,
     label_idx: Option<usize>,
@@ -40,10 +45,12 @@ impl CsvSource {
             path: p.clone(),
             source,
         })?;
+        let (limited, consumed) = RecordLimit::new(file, MAX_RECORD_BYTES);
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(true)
             .flexible(false)
-            .from_reader(BufReader::new(file));
+            .buffer_capacity(PARSER_BUFFER)
+            .from_reader(limited);
         let headers = reader
             .headers()
             .map_err(|e| DataError::Csv {
@@ -101,9 +108,11 @@ impl CsvSource {
                 )));
             }
         }
+        reset(&consumed);
         Ok(CsvSource {
             path: p,
             reader,
+            consumed,
             record: csv::StringRecord::new(),
             feat_idx,
             label_idx,
@@ -131,6 +140,7 @@ impl CsvSource {
         if !more {
             return Ok(false);
         }
+        reset(&self.consumed);
         let line = self.record.position().map_or(0, |p| p.line());
         if self.record.as_byte_record().as_slice().len() > MAX_RECORD_BYTES {
             return Err(DataError::Csv {

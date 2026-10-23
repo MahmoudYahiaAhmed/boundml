@@ -20,6 +20,13 @@ pub const MANIFEST_HASH_FILE: &str = "MANIFEST.sha256";
 pub const WEIGHTS_FILE: &str = "weights.safetensors";
 pub const MAX_MANIFEST_BYTES: u64 = 16 << 20;
 pub const MAX_WEIGHTS_BYTES: u64 = 1 << 30;
+/// Hard ceiling on a package's planned inference tensor memory (all declared
+/// sessions plus weights), enforced on save and load whether or not the package
+/// declares its own budget. BoundML targets small models; this stops a package from
+/// making an application or server preallocate an arbitrary amount of memory.
+pub const MAX_PLANNED_TENSOR_BYTES: u64 = 1 << 30;
+/// Upper bound on `bounds.sessions`.
+pub const MAX_SESSIONS: usize = 256;
 
 /// Everything needed to write a package (the manifest is derived from it).
 #[derive(Debug, Clone)]
@@ -223,11 +230,15 @@ impl Package {
                 found,
             });
         }
-        let graph = Graph::new(manifest.graph.clone())?;
+        let graph = Graph::new(manifest.graph.clone()).map_err(rejected)?;
         let decoded = decode_tensors(&weights_bytes, boundml_core::graph::MAX_PARAMS)?;
         let weights = assemble_weights(&graph, &manifest.tensors, decoded)?;
-        let model = Arc::new(Model::new(graph, weights)?);
-        check_consistency(&manifest, &model)?;
+        let model = Arc::new(Model::new(graph, weights).map_err(rejected)?);
+        check_consistency(&manifest, &model).map_err(|e| match e {
+            ArtifactError::Core(c) => rejected(c),
+            ArtifactError::Data(d) => ArtifactError::Inconsistent(d.to_string()),
+            other => other,
+        })?;
         check_test_vectors(&manifest)?;
         Ok(Package { manifest, model })
     }
@@ -280,6 +291,15 @@ impl Package {
             max_abs_error: max_err,
             passed,
         })
+    }
+}
+
+/// A loaded package whose graph or contents violate core rules is a rejected
+/// artifact (exit code 5), not invalid user input. Budget overruns keep their code.
+fn rejected(e: boundml_core::CoreError) -> ArtifactError {
+    match e {
+        e @ boundml_core::CoreError::BudgetExceeded { .. } => ArtifactError::Core(e),
+        e => ArtifactError::Inconsistent(e.to_string()),
     }
 }
 
@@ -358,12 +378,22 @@ fn check_consistency(m: &Manifest, model: &Model) -> Result<()> {
         return inc("package name must be 1..=128 bytes".into());
     }
     let b = &m.bounds;
-    if b.sessions == 0 || b.sessions > 1024 {
-        return inc("bounds.sessions must be 1..=1024".into());
+    if b.sessions == 0 || b.sessions > MAX_SESSIONS {
+        return inc(format!("bounds.sessions must be 1..={MAX_SESSIONS}"));
     }
     let report = model.inference_report(b.max_batch, b.sessions, b.planner)?;
     if let Some(budget) = b.tensor_budget_bytes {
         report.check_budget(budget)?;
+    }
+    if report.total_planned_bytes > MAX_PLANNED_TENSOR_BYTES {
+        return Err(ArtifactError::TooLarge {
+            what: format!(
+                "planned inference tensor memory for max_batch {} x {} session(s)",
+                b.max_batch, b.sessions
+            ),
+            bytes: report.total_planned_bytes,
+            limit: MAX_PLANNED_TENSOR_BYTES,
+        });
     }
     Ok(())
 }

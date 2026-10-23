@@ -265,3 +265,59 @@ fn graceful_shutdown_drains_in_flight_requests() {
         "listener closed after shutdown"
     );
 }
+
+#[test]
+fn duplicate_json_keys_are_rejected() {
+    let d = tempfile::tempdir().unwrap();
+    let mut s = start(
+        package(d.path(), 1),
+        ServeConfig {
+            workers: 1,
+            max_rows: 8,
+            ..Default::default()
+        },
+    );
+    let (c, b) = http(
+        s.addr,
+        "POST",
+        "/v1/predict",
+        r#"{"rows":[{"a":1,"a":5,"b":2}]}"#,
+    );
+    assert_eq!(c, 422, "{b}");
+    assert!(b.contains("given twice"), "{b}");
+    s.shutdown();
+}
+
+#[test]
+fn overload_is_rejected_before_the_body_is_read() {
+    let d = tempfile::tempdir().unwrap();
+    let cfg = ServeConfig {
+        workers: 1,
+        queue: 0,
+        max_rows: 8,
+        simulate_compute_delay: Duration::from_millis(800),
+        ..Default::default()
+    };
+    let mut s = start(package(d.path(), 1), cfg);
+    let a = s.addr;
+    let busy = std::thread::spawn(move || http(a, "POST", "/v1/predict", ONE).0);
+    std::thread::sleep(Duration::from_millis(150));
+    // Announce a 1 MB body but send none of it: the server must answer 503 at once.
+    let mut c = std::net::TcpStream::connect(a).unwrap();
+    c.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    write!(
+        c,
+        "POST /v1/predict HTTP/1.1\r\nHost: x\r\nContent-Length: 1000000\r\n\r\n"
+    )
+    .unwrap();
+    let t = Instant::now();
+    let mut buf = [0u8; 12];
+    c.read_exact(&mut buf).unwrap();
+    assert_eq!(&buf[9..12], b"503");
+    assert!(
+        t.elapsed() < Duration::from_millis(500),
+        "rejected without waiting for the body"
+    );
+    assert_eq!(busy.join().unwrap(), 200);
+    s.shutdown();
+}

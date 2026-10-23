@@ -128,6 +128,22 @@ pub fn train(cfg: &TrainConfig, base: &Path, opts: TrainOptions<'_>) -> Result<T
                 train_path.display()
             )));
         }
+        // The validation file affects recorded metrics, so it must be unchanged too.
+        let saved_valid = ck
+            .state
+            .data
+            .iter()
+            .find(|d| d.role == "valid")
+            .map(|d| d.sha256.clone());
+        let current_valid = match &valid_path {
+            Some(v) => Some(sha256_file(v)?.0),
+            None => None,
+        };
+        if saved_valid != current_valid {
+            return Err(TrainError::DataChanged(
+                "the validation file differs from the one recorded in the checkpoint".into(),
+            ));
+        }
         let mut opt = Optimizer::new(cfg.training.optimizer.clone(), &graph)?;
         opt.restore(ck.optimizer)?;
         (opts.on_event)(&TrainEvent::Resumed {

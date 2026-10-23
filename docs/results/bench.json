@@ -10,49 +10,119 @@
   "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02)",
   "boundml_build": "cargo --release (lto=thin, codegen-units=1), default target CPU",
   "torch_threads_default": 8,
-  "runs_per_measurement": 5
+  "tract_onnx": "0.23.9 (Cargo.lock), concrete-shape optimized plans, single thread",
+  "python_interpreter_startup_s": 0.05190790000051493,
+  "runs_per_measurement": 1
  },
  "datasets": {
   "breast_cancer": {
    "inference": {
     "boundml": {
-     "runtime": "boundml",
-     "runs": 5,
-     "cold_start_s": 0.010760799999843584,
-     "peak_working_set_bytes": 6369280,
-     "latency_us": {
+     "batch256_core_rows_per_s": 8977100.381672807,
+     "batch256_e2e_rows_per_s": 6290667.2407981055,
+     "checksum": 106.68566827349336,
+     "latency_core_us": {
+      "p50": 0.3,
+      "p95": 0.3,
+      "p99": 0.4
+     },
+     "latency_e2e_us": {
       "p50": 0.3,
       "p95": 0.4,
       "p99": 0.4
      },
-     "batch256_rows_per_s": 6955694.27059232,
-     "checksum": 106.68566827349336
+     "load_s": 0.00067,
+     "planned_tensor_bytes": 49156,
+     "preprocess_us_per_row": {
+      "p50": 0.0,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "boundml",
+     "threads": 1,
+     "cold_start_s": 0.0461970000033034,
+     "peak_working_set_bytes": 6541312,
+     "runs": 1
+    },
+    "tract": {
+     "batch256_core_rows_per_s": 23415481.75355474,
+     "batch256_e2e_rows_per_s": 12155989.45403691,
+     "checksum": 106.68565180897713,
+     "latency_core_us": {
+      "p50": 1.8,
+      "p95": 2.9,
+      "p99": 3.3
+     },
+     "latency_e2e_us": {
+      "p50": 1.8,
+      "p95": 1.9,
+      "p99": 3.0
+     },
+     "load_s": 0.0171362,
+     "preprocess_us_per_row": {
+      "p50": 0.1,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "tract",
+     "threads": 1,
+     "cold_start_s": 0.35546440000325674,
+     "peak_working_set_bytes": 31092736,
+     "runs": 1
     },
     "pytorch_eager": {
      "runtime": "torch",
-     "runs": 5,
-     "cold_start_s": 1.5552948000004108,
-     "peak_working_set_bytes": 212017152,
-     "latency_us": {
-      "p50": 26.9,
-      "p95": 38.2,
-      "p99": 50.4
+     "threads": 8,
+     "import_s": 1.968091300004744,
+     "load_s": 0.005077599998912774,
+     "preprocess_us_per_row": {
+      "p50": 2.7,
+      "p95": 3.5,
+      "p99": 3.7
      },
-     "batch256_rows_per_s": 4189697.4711331665,
-     "checksum": 106.6856684389504
+     "latency_core_us": {
+      "p50": 22.8,
+      "p95": 36.5,
+      "p99": 54.0
+     },
+     "latency_e2e_us": {
+      "p50": 26.5,
+      "p95": 30.3,
+      "p99": 52.9
+     },
+     "batch256_core_rows_per_s": 5825553.0531593235,
+     "batch256_e2e_rows_per_s": 2139226.8540732297,
+     "checksum": 106.6856684389504,
+     "cold_start_s": 2.0752859999993234,
+     "peak_working_set_bytes": 212746240,
+     "runs": 1
     },
     "onnxruntime": {
      "runtime": "ort",
-     "runs": 5,
-     "cold_start_s": 0.22478140000021085,
-     "peak_working_set_bytes": 53190656,
-     "latency_us": {
-      "p50": 10.4,
-      "p95": 13.6,
-      "p99": 17.6
+     "threads": "ort-default",
+     "import_s": 0.7057005999959074,
+     "load_s": 0.006369599999743514,
+     "preprocess_us_per_row": {
+      "p50": 3.5,
+      "p95": 4.0,
+      "p99": 4.2
      },
-     "batch256_rows_per_s": 9869002.213941267,
-     "checksum": 106.68566793203354
+     "latency_core_us": {
+      "p50": 13.3,
+      "p95": 15.5,
+      "p99": 32.2
+     },
+     "latency_e2e_us": {
+      "p50": 17.9,
+      "p95": 23.1,
+      "p99": 50.8
+     },
+     "batch256_core_rows_per_s": 8275635.453493912,
+     "batch256_e2e_rows_per_s": 3959096.1464019264,
+     "checksum": 106.68566793203354,
+     "cold_start_s": 0.8600279999955092,
+     "peak_working_set_bytes": 53915648,
+     "runs": 1
     }
    },
    "sizes": {
@@ -64,38 +134,26 @@
    },
    "training": {
     "boundml": {
-     "median_train_seconds": 0.4301561,
+     "median_train_seconds": 1.0525568,
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
      "all_test_metric": [
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
       0.9596774193548387
      ]
     },
     "pytorch_default": {
-     "median_train_seconds": 0.49909499999921536,
+     "median_train_seconds": 16.004396299998916,
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
      "all_test_metric": [
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
       0.9596774193548387
      ]
     },
     "pytorch_1_thread": {
-     "median_train_seconds": 0.3833940000004077,
+     "median_train_seconds": 0.9642954000009922,
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
      "all_test_metric": [
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
-      0.9596774193548387,
       0.9596774193548387
      ]
     }
@@ -104,43 +162,111 @@
   "wine_quality": {
    "inference": {
     "boundml": {
-     "runtime": "boundml",
-     "runs": 5,
-     "cold_start_s": 0.010588099998130929,
-     "peak_working_set_bytes": 6193152,
-     "latency_us": {
+     "batch256_core_rows_per_s": 6443041.287293077,
+     "batch256_e2e_rows_per_s": 5967268.700788878,
+     "checksum": 1435.8333430290222,
+     "latency_core_us": {
+      "p50": 0.4,
+      "p95": 0.4,
+      "p99": 0.5
+     },
+     "latency_e2e_us": {
       "p50": 0.4,
       "p95": 0.5,
-      "p99": 0.6
+      "p99": 0.5
      },
-     "batch256_rows_per_s": 6040633.324590103,
-     "checksum": 1435.8333430290222
+     "load_s": 0.0005829,
+     "planned_tensor_bytes": 69252,
+     "preprocess_us_per_row": {
+      "p50": 0.0,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "boundml",
+     "threads": 1,
+     "cold_start_s": 0.013235499995062128,
+     "peak_working_set_bytes": 6438912,
+     "runs": 1
+    },
+    "tract": {
+     "batch256_core_rows_per_s": 6717254.567473448,
+     "batch256_e2e_rows_per_s": 5533563.573149141,
+     "checksum": 1435.833340883255,
+     "latency_core_us": {
+      "p50": 3.1,
+      "p95": 3.5,
+      "p99": 4.9
+     },
+     "latency_e2e_us": {
+      "p50": 3.1,
+      "p95": 3.2,
+      "p99": 4.5
+     },
+     "load_s": 0.0155336,
+     "preprocess_us_per_row": {
+      "p50": 0.1,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "tract",
+     "threads": 1,
+     "cold_start_s": 0.031515299997408874,
+     "peak_working_set_bytes": 10334208,
+     "runs": 1
     },
     "pytorch_eager": {
      "runtime": "torch",
-     "runs": 5,
-     "cold_start_s": 1.640803700000106,
-     "peak_working_set_bytes": 211800064,
-     "latency_us": {
-      "p50": 31.4,
-      "p95": 39.5,
-      "p99": 60.7
+     "threads": 8,
+     "import_s": 5.856162799995218,
+     "load_s": 0.006509799997729715,
+     "preprocess_us_per_row": {
+      "p50": 3.0,
+      "p95": 3.7,
+      "p99": 5.5
      },
-     "batch256_rows_per_s": 3309752.012893431,
-     "checksum": 1435.8333387374878
+     "latency_core_us": {
+      "p50": 50.4,
+      "p95": 68.6,
+      "p99": 85.2
+     },
+     "latency_e2e_us": {
+      "p50": 62.5,
+      "p95": 83.6,
+      "p99": 116.0
+     },
+     "batch256_core_rows_per_s": 3420.8265483049063,
+     "batch256_e2e_rows_per_s": 4617.701866507338,
+     "checksum": 1435.8333387374878,
+     "cold_start_s": 6.05213470000308,
+     "peak_working_set_bytes": 211984384,
+     "runs": 1
     },
     "onnxruntime": {
      "runtime": "ort",
-     "runs": 5,
-     "cold_start_s": 0.22913809999954537,
-     "peak_working_set_bytes": 53317632,
-     "latency_us": {
-      "p50": 10.8,
-      "p95": 13.6,
-      "p99": 17.2
+     "threads": "ort-default",
+     "import_s": 0.48624549999658484,
+     "load_s": 0.006242199997359421,
+     "preprocess_us_per_row": {
+      "p50": 3.3,
+      "p95": 3.7,
+      "p99": 4.0
      },
-     "batch256_rows_per_s": 9132271.105302703,
-     "checksum": 1435.833340883255
+     "latency_core_us": {
+      "p50": 13.9,
+      "p95": 16.7,
+      "p99": 28.5
+     },
+     "latency_e2e_us": {
+      "p50": 17.7,
+      "p95": 22.8,
+      "p99": 33.6
+     },
+     "batch256_core_rows_per_s": 6458170.897585594,
+     "batch256_e2e_rows_per_s": 4593273.339753074,
+     "checksum": 1435.833340883255,
+     "cold_start_s": 0.7394232000006014,
+     "peak_working_set_bytes": 53821440,
+     "runs": 1
     }
    },
    "sizes": {
@@ -152,38 +278,26 @@
    },
    "training": {
     "boundml": {
-     "median_train_seconds": 0.2442335,
+     "median_train_seconds": 0.4763555,
      "metric": "rmse",
      "median_test_metric": 0.6634776647029015,
      "all_test_metric": [
-      0.6634776647029015,
-      0.6634776647029015,
-      0.6634776647029015,
-      0.6634776647029015,
       0.6634776647029015
      ]
     },
     "pytorch_default": {
-     "median_train_seconds": 0.9596437000000151,
+     "median_train_seconds": 0.8158503000013297,
      "metric": "rmse",
      "median_test_metric": 0.6616384369269597,
      "all_test_metric": [
-      0.6616384369269597,
-      0.6616384369269597,
-      0.6616384369269597,
-      0.6616384369269597,
       0.6616384369269597
      ]
     },
     "pytorch_1_thread": {
-     "median_train_seconds": 0.7429088999997475,
+     "median_train_seconds": 0.663055400000303,
      "metric": "rmse",
      "median_test_metric": 0.6616384369269597,
      "all_test_metric": [
-      0.6616384369269597,
-      0.6616384369269597,
-      0.6616384369269597,
-      0.6616384369269597,
       0.6616384369269597
      ]
     }

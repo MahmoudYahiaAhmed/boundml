@@ -1,9 +1,13 @@
 [package]
 name = "boundml-artifact"
-version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-rust-version = "1.94"
+description = "Versioned BoundML model packages: schema, fitted preprocessing, weights, self-tests, memory plan, embeddable Predictor and package comparison."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["machine-learning", "inference", "model-packaging", "safetensors", "embedded"]
+categories = ["science"]
 
 [dependencies]
 boundml-core = { version = "0.1.0", path = "../boundml-core" }
@@ -11,7 +15,7 @@ boundml-data = { version = "0.1.0", path = "../boundml-data" }
 hex = "0.4.3"
 safetensors = "0.8.0"
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
+serde_json = { version = "1.0.154", features = ["float_roundtrip"] }
 sha2 = "0.11.1"
 thiserror = "2.0.21"
 

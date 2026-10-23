@@ -58,18 +58,30 @@ def run_worker(cmd: list[str]) -> dict:
     return result
 
 
+def median_of(values: list):
+    """Median of numbers; recurse into dicts; keep the first value of anything else."""
+    first = values[0]
+    if isinstance(first, dict):
+        return {k: median_of([v[k] for v in values]) for k in first}
+    if isinstance(first, (int, float)) and not isinstance(first, bool):
+        return statistics.median(values)
+    return first
+
+
 def median_runs(cmd: list[str]) -> dict:
     runs = [run_worker(cmd) for _ in range(RUNS)]
-    med = lambda f: statistics.median(f(r) for r in runs)  # noqa: E731
-    return {
-        "runtime": runs[0]["runtime"],
-        "runs": RUNS,
-        "cold_start_s": med(lambda r: r["cold_start_s"]),
-        "peak_working_set_bytes": med(lambda r: r["peak_working_set_bytes"]),
-        "latency_us": {k: med(lambda r, k=k: r["latency_us"][k]) for k in ("p50", "p95", "p99")},
-        "batch256_rows_per_s": med(lambda r: r["batch256_rows_per_s"]),
-        "checksum": runs[0]["checksum"],
-    }
+    out = median_of(runs)
+    out["runs"] = RUNS
+    return out
+
+
+def python_startup() -> float:
+    times = []
+    for _ in range(RUNS):
+        t = time.perf_counter()
+        subprocess.run([PY, "-I", "-c", "pass"], check=True)
+        times.append(time.perf_counter() - t)
+    return statistics.median(times)
 
 
 def export_onnx(pkg: pathlib.Path, path: pathlib.Path) -> None:
@@ -128,6 +140,8 @@ def main() -> None:
         "rustc": subprocess.run(["rustc", "--version"], capture_output=True, text=True).stdout.strip(),
         "boundml_build": "cargo --release (lto=thin, codegen-units=1), default target CPU",
         "torch_threads_default": torch.get_num_threads(),
+        "tract_onnx": "0.23.9 (Cargo.lock), concrete-shape optimized plans, single thread",
+        "python_interpreter_startup_s": python_startup(),
         "runs_per_measurement": RUNS,
     }
     results: dict = {"environment": env, "datasets": {}}
@@ -138,6 +152,7 @@ def main() -> None:
         export_onnx(pkg, onnx)
         inf = {
             "boundml": median_runs([str(REL / f"infer{EXE}"), str(pkg), test]),
+            "tract": median_runs([str(REL / f"infer_tract{EXE}"), str(onnx), str(pkg), test]),
             "pytorch_eager": median_runs([PY, "bench/py_infer.py", "torch", str(pkg), test]),
             "onnxruntime": median_runs([PY, "bench/py_infer.py", "ort", str(pkg), test, str(onnx)]),
         }

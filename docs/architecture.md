@@ -63,6 +63,13 @@ parameters, unique names `[A-Za-z0-9_.-]{1,128}`, and at most 4096 nodes and 102
 parameters. One graph carries both an inference `output` and a training `loss`.
 Execution touches only the ancestors of the root required by the mode.
 
+**Row independence.** The inference path must compute each output row only from the
+same input row, so a prediction never depends on which other rows share its batch.
+Validation therefore rejects, on the inference path: tensors with the batch dimension
+as columns; transposes or reductions of batch tensors; and matmuls that contract over
+or transpose the batch dimension. The output must have the batch dimension as rows.
+Training losses may still reduce over the batch.
+
 ## Differentiation semantics
 
 - Reverse mode over the static graph. Forward runs in topological order. Backward

@@ -400,6 +400,7 @@ impl Graph {
         if graph.target.is_some_and(|t| reach_out[t]) {
             return gerr("inference output must not depend on the training target");
         }
+        graph.check_row_independent(&reach_out)?;
         let reach_loss = graph.def.loss.map(|l| graph.ancestors(l));
         for (id, n) in graph.def.nodes.iter().enumerate() {
             let used = reach_out[id] || reach_loss.as_ref().is_some_and(|r| r[id]);
@@ -421,6 +422,55 @@ impl Graph {
             }
         }
         Ok(graph)
+    }
+
+    /// Inference must be row-wise: output row `i` may depend only on input row `i`.
+    /// Otherwise a prediction would change with the other rows in its batch. On the
+    /// inference path this rejects batch-dimension columns, transposes and reductions
+    /// of batch tensors, and matmuls that contract over the batch dimension. Training
+    /// losses may still reduce over the batch.
+    fn check_row_independent(&self, reach_out: &[bool]) -> Result<()> {
+        let has_batch = |id: NodeId| {
+            let s = self.shapes[id];
+            s.rows == Dim::Batch || s.cols == Dim::Batch
+        };
+        for (id, node) in self.def.nodes.iter().enumerate() {
+            if !reach_out[id] {
+                continue;
+            }
+            let bad = |why: &str| {
+                gerr(format!(
+                    "node {id} '{}' {why}; inference outputs must be computed row by row (each output row may depend only on the same input row)",
+                    node.name
+                ))
+            };
+            if self.shapes[id].cols == Dim::Batch {
+                return bad("has the batch dimension as columns");
+            }
+            match node.op {
+                Op::Transpose { x } | Op::SumAll { x } | Op::MeanAll { x } if has_batch(x) => {
+                    return bad("transposes or reduces a batch tensor");
+                }
+                Op::MatMul { a, b, ta, tb } => {
+                    let sb = if tb {
+                        self.shapes[b].transposed()
+                    } else {
+                        self.shapes[b]
+                    };
+                    if (ta && has_batch(a)) || (tb && has_batch(b)) || sb.rows == Dim::Batch {
+                        return bad("contracts or transposes over the batch dimension");
+                    }
+                }
+                _ => {}
+            }
+        }
+        if self.shapes[self.def.output].rows != Dim::Batch {
+            return gerr(format!(
+                "inference output must have the batch dimension as rows, got {}",
+                self.shapes[self.def.output]
+            ));
+        }
+        Ok(())
     }
 
     /// Mask of nodes the given root depends on (including itself).
@@ -683,6 +733,40 @@ mod tests {
         assert!(serde_json::from_str::<GraphDef>(&bad).is_err());
         let extra = json.replace("\"op\":\"softmax\"", "\"op\":\"softmax\",\"axis\":0");
         assert!(serde_json::from_str::<GraphDef>(&extra).is_err());
+    }
+
+    #[test]
+    fn rejects_batch_mixing_inference_graphs() {
+        // gram = x x^T ; mix = gram x : a row's output depends on other rows.
+        let mut g = GraphBuilder::new();
+        let x = g.input("x", 2);
+        let gram = g.matmul_t("gram", x, x, false, true);
+        let w = g.param("w", 2, 1, true);
+        let mix = g.matmul("mix", gram, x);
+        let o = g.matmul("o", mix, w);
+        let e = g.build(o, None).unwrap_err().to_string();
+        assert!(e.contains("row by row"), "{e}");
+
+        let mut g = GraphBuilder::new();
+        let x = g.input("x", 2);
+        let w = g.param("w", 2, 1, true);
+        let h = g.matmul("h", x, w);
+        let m = g.mean_all("m", h);
+        let o = g.add("o", h, m);
+        assert!(
+            g.build(o, None)
+                .unwrap_err()
+                .to_string()
+                .contains("row by row")
+        );
+
+        // A scalar output is not a per-row prediction.
+        let mut g = GraphBuilder::new();
+        let x = g.input("x", 2);
+        let w = g.param("w", 2, 1, true);
+        let h = g.matmul("h", x, w);
+        let s = g.sum_all("s", h);
+        assert!(g.build(s, None).is_err());
     }
 
     #[test]

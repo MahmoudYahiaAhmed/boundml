@@ -343,3 +343,132 @@ fn compare_classifies_changes() {
     assert_eq!(r.verdict, Verdict::Breaking);
     assert!(r.changes.iter().any(|c| c.area == "bounds"));
 }
+
+/// Same as `spec_for` but with an arbitrary feature list and extra-column policy.
+fn spec_with(features: &[&str], extra: ExtraColumns, seed: u64) -> PackageSpec {
+    let mut s = schema(&["no", "yes"]);
+    s.features = features.iter().map(|f| f.to_string()).collect();
+    s.extra_columns = extra;
+    let dense = DenseSpec {
+        inputs: features.len(),
+        hidden: vec![3],
+        activation: Activation::Tanh,
+        task: s.task(),
+    };
+    let graph = dense.graph().unwrap();
+    let mut spec = spec_for(schema(&["no", "yes"]), seed, 8);
+    spec.weights = dense.init_params(&graph, &mut Rng::seed(seed));
+    spec.graph = graph.def().clone();
+    spec.preprocessing = pre(&s);
+    spec.schema = s;
+    spec.test_inputs = vec![vec![Some(0.5); features.len()]];
+    spec
+}
+
+#[test]
+fn removed_feature_under_reject_policy_is_breaking() {
+    let d = tempfile::tempdir().unwrap();
+    let data = d.path().join("clients.csv");
+    std::fs::write(&data, "a,b,c,y\n1,2,3,yes\n0,1,0,no\n").unwrap();
+    let save = |n: &str, spec| Arc::new(Package::save(&d.path().join(n), spec).unwrap());
+    let cur = save("cur", spec_with(&["a", "b", "c"], ExtraColumns::Reject, 1));
+    let cand = save("cand", spec_with(&["a", "c"], ExtraColumns::Reject, 1));
+    let opts = CompareOptions {
+        data: Some(data.clone()),
+        ..Default::default()
+    };
+    let r = compare(&cur, &cand, &opts).unwrap();
+    assert_eq!(r.verdict, Verdict::Breaking, "{r:?}");
+    assert!(
+        r.numeric.is_none(),
+        "numeric diff is reported as not possible, not an error"
+    );
+    assert!(
+        r.changes
+            .iter()
+            .any(|c| c.area == "numeric" && c.message.contains("not possible"))
+    );
+    // With the ignore policy the old clients' extra column is harmless.
+    let cand2 = save("cand2", spec_with(&["a", "c"], ExtraColumns::Ignore, 1));
+    let cur2 = save("cur2", spec_with(&["a", "b", "c"], ExtraColumns::Ignore, 1));
+    assert_ne!(
+        compare(&cur2, &cand2, &CompareOptions::default())
+            .unwrap()
+            .verdict,
+        Verdict::Breaking
+    );
+}
+
+#[test]
+fn bounds_changes_are_reported() {
+    let d = tempfile::tempdir().unwrap();
+    let mut a = spec_for(schema(&["no", "yes"]), 5, 8);
+    a.bounds.tensor_budget_bytes = Some(1 << 20);
+    a.bounds.sessions = 2;
+    let mut b = a.clone();
+    b.bounds.tensor_budget_bytes = None;
+    b.bounds.sessions = 1;
+    let pa = Arc::new(Package::save(&d.path().join("a"), a).unwrap());
+    let pb = Arc::new(Package::save(&d.path().join("b"), b).unwrap());
+    let r = compare(&pa, &pb, &CompareOptions::default()).unwrap();
+    assert_ne!(r.verdict, Verdict::Identical, "{r:?}");
+    assert!(
+        r.changes
+            .iter()
+            .any(|c| c.message.contains("no longer declares a tensor budget"))
+    );
+    assert!(
+        r.changes
+            .iter()
+            .any(|c| c.message.contains("sessions reduced"))
+    );
+}
+
+#[test]
+fn oversized_declared_bounds_are_rejected_even_without_budget() {
+    let d = tempfile::tempdir().unwrap();
+    let good = d.path().join("good");
+    Package::save(&good, spec_for(schema(&["no", "yes"]), 2, 8)).unwrap();
+    let dir = d.path().join("huge");
+    copy_dir(&good, &dir);
+    edit_manifest(&dir, |v| {
+        v["bounds"]["max_batch"] = 8_000_000.into();
+        v["bounds"]["sessions"] = 256.into();
+        v["bounds"]["tensor_budget_bytes"] = serde_json::Value::Null;
+    });
+    let e = Package::load(&dir).err().unwrap().to_string();
+    assert!(
+        e.contains("BML-A005") && e.contains("planned inference tensor memory"),
+        "{e}"
+    );
+    let dir2 = d.path().join("sessions");
+    copy_dir(&good, &dir2);
+    edit_manifest(&dir2, |v| v["bounds"]["sessions"] = 100_000.into());
+    assert!(
+        Package::load(&dir2)
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("BML-A006")
+    );
+}
+
+#[test]
+fn batch_mixing_graph_in_package_is_rejected() {
+    let d = tempfile::tempdir().unwrap();
+    let good = d.path().join("good");
+    Package::save(&good, spec_for(schema(&["no", "yes"]), 2, 8)).unwrap();
+    let dir = d.path().join("mix");
+    copy_dir(&good, &dir);
+    // Make the output a scalar reduction over the whole batch.
+    edit_manifest(&dir, |v| {
+        let out = v["graph"]["output"].as_u64().unwrap();
+        let nodes = v["graph"]["nodes"].as_array_mut().unwrap();
+        nodes.push(serde_json::json!({"name": "batch_mean", "op": "mean_all", "x": out}));
+        let n = nodes.len() - 1;
+        v["graph"]["output"] = n.into();
+        v["test_vectors"] = serde_json::Value::Null;
+    });
+    let e = Package::load(&dir).err().unwrap().to_string();
+    assert!(e.contains("BML-A006") && e.contains("row by row"), "{e}");
+}

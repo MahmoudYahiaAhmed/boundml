@@ -1,16 +1,20 @@
 [package]
 name = "boundml-train"
-version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-rust-version = "1.94"
+description = "Declarative training, metrics, exactly resumable checkpoints and packaging for BoundML dense models."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["machine-learning", "training", "neural-network", "checkpoint", "tabular"]
+categories = ["science"]
 
 [dependencies]
 boundml-artifact = { version = "0.1.0", path = "../boundml-artifact" }
 boundml-core = { version = "0.1.0", path = "../boundml-core" }
 boundml-data = { version = "0.1.0", path = "../boundml-data" }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
+serde_json = { version = "1.0.154", features = ["float_roundtrip"] }
 thiserror = "2.0.21"
 toml = "1.1.8"
 

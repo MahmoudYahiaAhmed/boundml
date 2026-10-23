@@ -74,6 +74,19 @@ pub fn report_text(r: &MemoryReport) -> String {
     t
 }
 
+pub fn version(long: &str, revision: &str, target: &str) -> CmdResult {
+    let pkg = boundml_artifact::manifest::PACKAGE_FORMAT_VERSION;
+    let ck = boundml_train::checkpoint::CHECKPOINT_VERSION;
+    ok(
+        json!({"version": boundml_core::VERSION, "revision": revision, "target": target,
+            "package_format_version": pkg, "checkpoint_format_version": ck}),
+        format!(
+            "boundml {long}
+package format v{pkg}, checkpoint format v{ck}"
+        ),
+    )
+}
+
 pub fn init(dir: &Path) -> CmdResult {
     let files = crate::init::init(dir)?;
     let text = format!(
@@ -372,12 +385,16 @@ pub fn inspect(pkg: &Path) -> CmdResult {
 pub fn verify(pkg: &Path) -> CmdResult {
     let p = Package::load(pkg).map_err(s)?;
     let r = p.verify().map_err(s)?;
-    let text = format!(
-        "integrity, version and consistency checks passed; self-test: {} vector(s), max abs error {:e} -> {}",
-        r.vectors,
-        r.max_abs_error,
-        if r.passed { "PASS" } else { "FAIL" }
-    );
+    let text = if r.vectors == 0 {
+        "integrity, version and consistency checks passed; no test vectors are bundled, so no outputs were checked".to_string()
+    } else {
+        format!(
+            "integrity, version and consistency checks passed; self-test: {} vector(s), max abs error {:e} -> {}",
+            r.vectors,
+            r.max_abs_error,
+            if r.passed { "PASS" } else { "FAIL" }
+        )
+    };
     Ok(Outcome {
         json: json!(r),
         text,
@@ -389,7 +406,7 @@ pub fn verify(pkg: &Path) -> CmdResult {
     })
 }
 
-pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize) -> CmdResult {
+pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize, preview: usize) -> CmdResult {
     let p = Arc::new(Package::load(pkg).map_err(s)?);
     let r = p.verify().map_err(s)?;
     if !r.passed {
@@ -402,8 +419,15 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize) -> CmdResult {
     let mut pred = p.predictor(batch).map_err(s)?;
     let m = p.manifest();
     let mut src = CsvSource::open(data, &m.schema, false).map_err(s)?;
-    let mut w = csv::Writer::from_path(out)
-        .map_err(|e| format!("BML-A001 I/O error on {}: {e}", out.display()))?;
+    // Write to a sibling temp file and rename on success, so a failure never leaves
+    // a truncated prediction file behind.
+    let tmp = {
+        let mut t = out.as_os_str().to_owned();
+        t.push(".partial");
+        std::path::PathBuf::from(t)
+    };
+    let mut w = csv::Writer::from_path(&tmp)
+        .map_err(|e| format!("BML-A001 I/O error on {}: {e}", tmp.display()))?;
     let names = m.output_names();
     let mut header = vec!["line".to_string()];
     header.extend(names.iter().cloned());
@@ -417,6 +441,7 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize) -> CmdResult {
     let mut outv = vec![0.0f32; batch * no];
     let mut row = RawRow::default();
     let mut total = 0u64;
+    let mut shown: Vec<Vec<String>> = Vec::new();
     let started = Instant::now();
     loop {
         let mut n = 0;
@@ -437,6 +462,9 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize) -> CmdResult {
             if let Some(c) = m.schema.classes() {
                 rec.push(c[boundml_artifact::compare::decision(&m.task, o)].clone());
             }
+            if shown.len() < preview {
+                shown.push(rec.clone());
+            }
             w.write_record(&rec).map_err(s)?;
         }
         total += n as u64;
@@ -445,15 +473,44 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize) -> CmdResult {
         }
     }
     w.flush()
+        .map_err(|e| format!("BML-A001 I/O error on {}: {e}", tmp.display()))?;
+    drop(w);
+    std::fs::rename(&tmp, out)
         .map_err(|e| format!("BML-A001 I/O error on {}: {e}", out.display()))?;
     let secs = started.elapsed().as_secs_f64();
+    let mut text = format!(
+        "wrote {total} predictions to {} in {secs:.3}s",
+        out.display()
+    );
+    if !shown.is_empty() {
+        let _ = write!(
+            text,
+            "
+  {}",
+            header.join("  ")
+        );
+        for r in &shown {
+            let cells: Vec<String> = r.iter().map(|v| fmt_cell(v)).collect();
+            let _ = write!(
+                text,
+                "
+  {}",
+                cells.join("  ")
+            );
+        }
+    }
     ok(
-        json!({"rows": total, "out": out.display().to_string(), "seconds": secs}),
-        format!(
-            "wrote {total} predictions to {} in {secs:.3}s",
-            out.display()
-        ),
+        json!({"rows": total, "out": out.display().to_string(), "seconds": secs, "preview": shown}),
+        text,
     )
+}
+
+/// Shorten long float strings for the human-readable preview table.
+fn fmt_cell(v: &str) -> String {
+    match v.parse::<f64>() {
+        Ok(x) if v.contains('.') => format!("{x:.4}"),
+        _ => v.to_string(),
+    }
 }
 
 pub fn compare_cmd(current: &Path, candidate: &Path, opts: CompareOptions) -> CmdResult {
@@ -546,6 +603,9 @@ pub fn serve(pkg: &Path, bind: &str, cfg: ServeConfig) -> CmdResult {
     })
 }
 
+/// Default cap on rows per HTTP request when `--max-rows` is not given.
+pub const DEFAULT_MAX_ROWS: usize = 256;
+
 pub fn serve_config(
     workers: Option<usize>,
     queue: usize,
@@ -555,7 +615,10 @@ pub fn serve_config(
     pkg_sessions: usize,
 ) -> Result<ServeConfig, String> {
     Ok(ServeConfig {
-        workers: workers.unwrap_or(pkg_sessions),
+        workers: workers.unwrap_or_else(|| {
+            let cpus = std::thread::available_parallelism().map_or(1, usize::from);
+            pkg_sessions.min(cpus)
+        }),
         queue,
         max_body_bytes: usize::try_from(parse_bytes(max_body).map_err(s)?).map_err(s)?,
         max_rows,

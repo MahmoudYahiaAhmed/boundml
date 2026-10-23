@@ -45,11 +45,11 @@ returns `{"error": {"code", "message"}}`.
 | BML-A002 | artifact | malformed artifact (bad JSON, unknown field or op, wrong file type, invalid safetensors) |
 | BML-A003 | artifact | unsupported format version or runtime too old |
 | BML-A004 | artifact | integrity (hash/size) mismatch: corrupted or modified file |
-| BML-A005 | artifact | declared or actual file size over the limit |
-| BML-A006 | artifact | internally inconsistent (tensor names/shapes, widths, tolerances) |
+| BML-A005 | artifact | declared or actual file size over the limit, or planned inference tensor memory over the 1 GiB package ceiling |
+| BML-A006 | artifact | internally inconsistent: tensor names/shapes, widths, tolerances, or a graph rule violated (the underlying `BML-C`/`BML-D` code is in the message) |
 | BML-A007 | artifact | self-test failed: outputs differ from bundled test vectors |
 | BML-A008 | artifact | invalid input row (missing under `reject`, duplicate or unknown field, non-finite) |
-| BML-M001 | import | invalid or unsupported import bundle |
+| BML-M001 | import | invalid or unsupported import bundle (including atol > 1e-3, rtol > 1e-2, or fewer than 4 reference rows) |
 | BML-S001 | server | at capacity (HTTP 503 with `Retry-After: 1`) |
 | BML-S002 | server | malformed JSON request (400) |
 | BML-S003 | server | shutting down (503) |

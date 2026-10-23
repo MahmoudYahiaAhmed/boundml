@@ -37,6 +37,10 @@ struct Bundle {
     rtol: f32,
 }
 
+const MAX_ATOL: f32 = 1e-3;
+const MAX_RTOL: f32 = 1e-2;
+const MIN_REFERENCE_ROWS: usize = 4;
+
 fn default_tol() -> f32 {
     1e-5
 }
@@ -90,6 +94,19 @@ pub fn import(bundle_dir: &Path, out: &Path, max_batch: usize) -> Result<ImportR
         return Err(bad(format!(
             "unsupported bundle format {} v{}",
             b.format, b.version
+        )));
+    }
+    // Loose tolerances would make the source-framework check meaningless.
+    if !(0.0..=MAX_ATOL).contains(&b.atol) || !(0.0..=MAX_RTOL).contains(&b.rtol) {
+        return Err(bad(format!(
+            "tolerances atol={} rtol={} exceed the allowed maximum (atol <= {MAX_ATOL}, rtol <= {MAX_RTOL})",
+            b.atol, b.rtol
+        )));
+    }
+    if b.reference.inputs.len() < MIN_REFERENCE_ROWS {
+        return Err(bad(format!(
+            "at least {MIN_REFERENCE_ROWS} reference rows are required, got {}",
+            b.reference.inputs.len()
         )));
     }
     let wbytes = read_limited(&bundle_dir.join("weights.safetensors"), 1 << 30)

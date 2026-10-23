@@ -1,9 +1,13 @@
 [package]
 name = "boundml-core"
-version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-rust-version = "1.94"
+description = "Graph IR, CPU kernels, reverse-mode autodiff, static tensor-memory planning and optimizers for small dense models (BoundML core)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["machine-learning", "autodiff", "neural-network", "memory-planning", "tabular"]
+categories = ["science", "algorithms"]
 
 [dependencies]
 serde = { version = "1.0.229", features = ["derive"] }

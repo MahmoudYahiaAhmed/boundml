@@ -12,6 +12,7 @@
 
 mod csvsrc;
 mod error;
+mod limit;
 mod preprocess;
 mod schema;
 mod split;

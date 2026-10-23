@@ -194,7 +194,7 @@ fn fan_out_and_all_ops() {
     let a1 = g.add("a1", mean_ls, sum_r);
     let a2 = g.add("a2", a1, sum_q);
     let loss = g.add("loss", a2, mse);
-    let def = g.into_def(a2, Some(loss));
+    let def = g.into_def(ls, Some(loss));
     check(def, 4, vec![0.1, 0.9, 0.4, 0.5], 9);
 }
 

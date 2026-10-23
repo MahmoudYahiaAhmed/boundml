@@ -13,7 +13,7 @@
 | Value that overflows f32 after standardization | `BML-D005` / `BML-A008` |
 | Constant feature in training data | allowed. It is flagged `constant: true` and uses `std = 1`, so the feature is centered only |
 | Feature never observed in training | `BML-D007` |
-| Ragged rows, records > 1 MiB, > 100k columns | `BML-D002` / `BML-D004` |
+| Ragged rows, records > 1 MiB (including an unterminated quote), > 100k columns | `BML-D002` / `BML-D004`. The size check fails *while reading*, so memory stays bounded by 1 MiB plus a 64 KiB parser buffer |
 | Classification labels | strings matched exactly (after trimming) against `classes`; the index is the class id; with 2 classes the positive class is `classes[1]` |
 
 **Fitting.** `Preprocessor::fit` makes one streaming pass over the training file only
@@ -31,7 +31,9 @@ epoch and the rows already emitted, and resume replays the draws to the exact sa
 position. Validation and evaluation read in file order.
 
 **Splitting.** `boundml split` assigns each row to train/valid/test independently
-with a seeded RNG (streaming, approximate proportions, deterministic).
+with a seeded RNG (streaming, approximate proportions, deterministic). Outputs are
+written to temporary files and renamed only on success, and an `--out` directory that
+would overwrite the input file is refused.
 
 **Outside the package.** Anything the package does not represent must be applied
 identically by the caller: derived features, unit conversions, categorical

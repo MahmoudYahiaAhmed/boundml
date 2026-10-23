@@ -115,7 +115,13 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/healthz", get(health))
         .route("/readyz", get(ready))
         .route("/v1/model", get(model_info))
-        .route("/v1/predict", post(predict))
+        .route(
+            "/v1/predict",
+            post(predict).route_layer(axum::middleware::from_fn_with_state(
+                Arc::clone(&state),
+                admit,
+            )),
+        )
         .layer(DefaultBodyLimit::max(max_body))
         .layer(TimeoutLayer::with_status_code(
             StatusCode::REQUEST_TIMEOUT,
@@ -166,7 +172,39 @@ async fn model_info(State(s): State<Arc<AppState>>) -> Json<Value> {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PredictRequest {
-    rows: Vec<serde_json::Map<String, Value>>,
+    rows: Vec<Row>,
+}
+
+/// Maximum fields accepted in one row object.
+const MAX_FIELDS_PER_ROW: usize = 4096;
+
+/// A JSON object kept as an ordered list of pairs so that duplicate keys reach
+/// `Predictor::fill_named` (which rejects them) instead of being silently merged.
+struct Row(Vec<(String, Value)>);
+
+impl<'de> Deserialize<'de> for Row {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Row, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = Row;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("an object mapping feature names to numbers or null")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut m: A) -> Result<Row, A::Error> {
+                let mut pairs = Vec::new();
+                while let Some((k, v)) = m.next_entry::<String, Value>()? {
+                    if pairs.len() >= MAX_FIELDS_PER_ROW {
+                        return Err(serde::de::Error::custom(format!(
+                            "more than {MAX_FIELDS_PER_ROW} fields in a row"
+                        )));
+                    }
+                    pairs.push((k, v));
+                }
+                Ok(Row(pairs))
+            }
+        }
+        d.deserialize_map(V)
+    }
 }
 
 #[derive(Serialize)]
@@ -178,7 +216,14 @@ struct PredictResponse {
     predicted: Option<Vec<String>>,
 }
 
-async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
+/// Admission control runs *before* the request body is read, so at most
+/// `workers + queue` bodies (each <= `max_body_bytes`) are buffered at any time.
+/// Excess requests get 503 without their bodies being read.
+async fn admit(
+    State(s): State<Arc<AppState>>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
     if s.shutting_down.load(Ordering::SeqCst) {
         return error(StatusCode::SERVICE_UNAVAILABLE, "BML-S003", "shutting down");
     }
@@ -190,6 +235,10 @@ async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Res
             "server at capacity; retry later",
         );
     };
+    next.run(req).await
+}
+
+async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
     let req: PredictRequest = match serde_json::from_slice(&body) {
         Ok(r) => r,
         Err(e) => {
@@ -246,18 +295,14 @@ async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Res
 
 type RowError = (StatusCode, String, String);
 
-fn run_rows(
-    s: &AppState,
-    p: &mut Predictor,
-    rows: &[serde_json::Map<String, Value>],
-) -> Result<PredictResponse, RowError> {
+fn run_rows(s: &AppState, p: &mut Predictor, rows: &[Row]) -> Result<PredictResponse, RowError> {
     let nf = p.n_features();
     let no = p.output_cols();
     let n = rows.len();
     let mut raw = vec![None; n * nf];
     for (i, obj) in rows.iter().enumerate() {
-        let mut pairs = Vec::with_capacity(obj.len());
-        for (k, v) in obj {
+        let mut pairs = Vec::with_capacity(obj.0.len());
+        for (k, v) in &obj.0 {
             let val = match v {
                 Value::Null => None,
                 Value::Number(x) => x.as_f64(),

@@ -48,7 +48,12 @@ Unknown fields are rejected at every level (`deny_unknown_fields`).
 6. The graph is re-validated (`BML-C001`/`BML-C003`). Schema, preprocessing, task and
    input/output widths must agree.
 7. The inference memory plan is **recomputed** for `bounds` with the installed
-   runtime, and the budget is enforced (`BML-C005`).
+   runtime, and the budget is enforced (`BML-C005`). Independently of any declared
+   budget, the planned inference tensor memory for all declared sessions must not
+   exceed 1 GiB (`BML-A005`), and `sessions` is limited to 1..=256. Graph or
+   consistency violations in a loaded package are reported as `BML-A006` (exit 5),
+   with the underlying rule in the message. The graph must also be row-wise (see
+   `docs/architecture.md`).
 8. Test vectors have their widths and tolerances checked. `verify()` runs them
    through the full preprocessing + model path. `boundml verify`, `predict`, `serve`
    and the embedding example all run `verify()` after loading.
@@ -89,7 +94,12 @@ order exactly by replaying the shuffle draws.
   bitwise-identical outputs. Across BoundML versions or CPUs, outputs are expected
   to agree within the package's test-vector tolerance, and `boundml verify` checks
   this after an upgrade.
-- **Model updates**: run `boundml compare current.boundml candidate.boundml --data
+- **Model updates**: `compare` marks a change *breaking* when current clients or
+  deployments could fail or change meaning. That covers a changed task, label or
+  classes, a new required feature, a removed feature when the candidate rejects
+  extra columns, a lower `max_batch`, exceeding the current budget, stricter policies,
+  a numeric difference over `--max-abs-diff`, or a requested numeric check that cannot
+  run on the data. Fewer planned sessions or a removed budget are warnings. Run `boundml compare current.boundml candidate.boundml --data
   holdout.csv [--max-abs-diff X]` in CI. Exit code 6 means breaking (see
   `docs/errors.md`).
 

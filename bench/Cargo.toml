@@ -5,10 +5,12 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-repository.workspace = true
 
 [dependencies]
 boundml-artifact = { version = "0.1.0", path = "../crates/boundml-artifact" }
+boundml-core = { version = "0.1.0", path = "../crates/boundml-core" }
 boundml-data = { version = "0.1.0", path = "../crates/boundml-data" }
 boundml-train = { version = "0.1.0", path = "../crates/boundml-train" }
+csv = "1.4.0"
 serde_json = "1.0.154"
+tract-onnx = "0.23.9"

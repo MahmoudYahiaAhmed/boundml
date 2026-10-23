@@ -198,3 +198,44 @@ fn split_is_deterministic() {
     assert_eq!(a, b);
     assert!(split_csv(&p, &d.path().join("s3"), 0.6, 0.5, 3).is_err());
 }
+
+#[test]
+fn split_refuses_to_overwrite_its_input() {
+    let d = tempfile::tempdir().unwrap();
+    let content = "a,b,y\n1,2,no\n3,4,yes\n";
+    let p = write(&d, "train.csv", content);
+    let e = split_csv(&p, d.path(), 0.2, 0.2, 1)
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(e.contains("overwritten"), "{e}");
+    assert_eq!(
+        std::fs::read_to_string(&p).unwrap(),
+        content,
+        "input untouched"
+    );
+}
+
+#[test]
+fn oversized_or_unterminated_records_fail_while_reading() {
+    let d = tempfile::tempdir().unwrap();
+    let s = schema(MissingPolicy::Reject, ExtraColumns::Ignore);
+    // An unterminated quote would otherwise make the parser buffer the whole file.
+    let mut big = String::from("a,b,y\n1,\"");
+    big.push_str(&"x".repeat(3 << 20));
+    let p = write(&d, "big.csv", &big);
+    let e = Preprocessor::fit(&p, &s, Normalize::Standardize)
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(e.contains("exceeds"), "{e}");
+    let e = split_csv(&p, &d.path().join("out"), 0.2, 0.2, 1)
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(e.contains("exceeds"), "{e}");
+    assert!(
+        !d.path().join("out/train.csv").exists(),
+        "no partial outputs left"
+    );
+}

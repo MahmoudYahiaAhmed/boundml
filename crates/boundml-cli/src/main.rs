@@ -5,9 +5,21 @@ use boundml_core::{Mode, PlannerKind};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-/// Train, package and embed small dense models with an enforceable contract.
+const LONG_VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION"),
+    " (revision ",
+    env!("BOUNDML_BUILD_REVISION"),
+    ", ",
+    env!("BOUNDML_BUILD_TARGET"),
+    ")"
+);
+
+/// Small models. Simple deployment. Native Rust.
+///
+/// Train dense models from CSV, package preprocessing and weights together, and run
+/// predictions inside your Rust application.
 #[derive(Parser)]
-#[command(name = "boundml", version, about)]
+#[command(name = "boundml", version, long_version = LONG_VERSION, about)]
 struct Cli {
     /// Print machine-readable JSON on stdout instead of human-readable text.
     #[arg(long, global = true)]
@@ -30,6 +42,8 @@ enum PlannerArg {
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// Print version, build target and supported artifact format versions.
+    Version,
     /// Scaffold an example project (config + synthetic data) in DIR.
     Init { dir: PathBuf },
     /// Deterministically split a CSV into train/valid/test files.
@@ -104,6 +118,9 @@ enum Cmd {
         out: PathBuf,
         #[arg(long, default_value_t = 256)]
         batch: usize,
+        /// Also print the first N predictions as a table.
+        #[arg(long, default_value_t = 0)]
+        preview: usize,
     },
     /// Compare a candidate package with the current one before an update.
     Compare {
@@ -122,7 +139,8 @@ enum Cmd {
         package: PathBuf,
         #[arg(long, default_value = "127.0.0.1:8080")]
         bind: String,
-        /// Concurrent computations (default: the package's planned sessions).
+        /// Concurrent computations (default: the package's planned sessions, at most
+        /// the number of CPUs).
         #[arg(long)]
         workers: Option<usize>,
         /// Requests allowed to wait beyond the workers; more are rejected with 503.
@@ -130,7 +148,7 @@ enum Cmd {
         queue: usize,
         #[arg(long, default_value = "1MiB")]
         max_body: String,
-        /// Rows per request (default: the package's max_batch).
+        /// Rows per request (default: the package's max_batch, at most 256).
         #[arg(long)]
         max_rows: Option<usize>,
         #[arg(long, default_value_t = 5000)]
@@ -148,6 +166,11 @@ enum Cmd {
 
 fn run(cmd: Cmd) -> CmdResult {
     match cmd {
+        Cmd::Version => commands::version(
+            LONG_VERSION,
+            env!("BOUNDML_BUILD_REVISION"),
+            env!("BOUNDML_BUILD_TARGET"),
+        ),
         Cmd::Init { dir } => commands::init(&dir),
         Cmd::Split {
             csv,
@@ -198,7 +221,8 @@ fn run(cmd: Cmd) -> CmdResult {
             data,
             out,
             batch,
-        } => commands::predict(&package, &data, &out, batch),
+            preview,
+        } => commands::predict(&package, &data, &out, batch, preview),
         Cmd::Compare {
             current,
             candidate,
@@ -229,7 +253,7 @@ fn run(cmd: Cmd) -> CmdResult {
                 workers,
                 queue,
                 &max_body,
-                max_rows.unwrap_or(b.max_batch),
+                max_rows.unwrap_or(b.max_batch.min(commands::DEFAULT_MAX_ROWS)),
                 timeout_ms,
                 b.sessions,
             )?;

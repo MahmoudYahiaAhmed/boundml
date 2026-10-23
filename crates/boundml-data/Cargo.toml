@@ -1,9 +1,13 @@
 [package]
 name = "boundml-data"
-version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-rust-version = "1.94"
+description = "Schema-checked numeric CSV input, train-only fitted preprocessing and bounded deterministic minibatch streaming for BoundML."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["machine-learning", "csv", "preprocessing", "tabular", "schema"]
+categories = ["science", "parser-implementations"]
 
 [dependencies]
 boundml-core = { version = "0.1.0", path = "../boundml-core" }

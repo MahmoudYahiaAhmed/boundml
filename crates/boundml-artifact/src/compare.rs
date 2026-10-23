@@ -133,11 +133,23 @@ pub fn compare(
         .filter(|f| !a.schema.features.contains(f))
         .collect();
     if !removed.is_empty() {
-        add(
-            "schema",
-            Severity::Warning,
-            format!("candidate no longer uses feature(s): {removed:?}"),
-        );
+        // Current clients keep sending these columns. Under `extra_columns = "reject"`
+        // the candidate refuses every such request.
+        if b.schema.extra_columns == ExtraColumns::Reject {
+            add(
+                "schema",
+                Severity::Breaking,
+                format!(
+                    "candidate no longer uses feature(s) {removed:?} and rejects extra columns; requests from current clients would fail"
+                ),
+            );
+        } else {
+            add(
+                "schema",
+                Severity::Warning,
+                format!("candidate no longer uses feature(s) {removed:?} (ignored if still sent)"),
+            );
+        }
     }
     if !added.is_empty() {
         let sev = if b.schema.missing == MissingPolicy::Reject {
@@ -242,6 +254,45 @@ pub fn compare(
             ),
         );
     }
+    if b.bounds.sessions < a.bounds.sessions {
+        add(
+            "bounds",
+            Severity::Warning,
+            format!(
+                "planned sessions reduced {} -> {}; deployments running more workers would be refused",
+                a.bounds.sessions, b.bounds.sessions
+            ),
+        );
+    } else if b.bounds.sessions != a.bounds.sessions {
+        add(
+            "bounds",
+            Severity::Info,
+            format!(
+                "planned sessions {} -> {}",
+                a.bounds.sessions, b.bounds.sessions
+            ),
+        );
+    }
+    match (a.bounds.tensor_budget_bytes, b.bounds.tensor_budget_bytes) {
+        (Some(x), None) => add(
+            "bounds",
+            Severity::Warning,
+            format!("candidate no longer declares a tensor budget (was {x} bytes)"),
+        ),
+        (x, y) if x != y => add(
+            "bounds",
+            Severity::Info,
+            format!("tensor budget {x:?} -> {y:?} bytes"),
+        ),
+        _ => {}
+    }
+    if a.bounds.planner != b.bounds.planner {
+        add(
+            "bounds",
+            Severity::Info,
+            format!("planner {:?} -> {:?}", a.bounds.planner, b.bounds.planner),
+        );
+    }
     // Memory.
     let ra = current.memory_report(a.bounds.sessions)?;
     let rb = candidate.memory_report(a.bounds.sessions)?;
@@ -273,7 +324,25 @@ pub fn compare(
     }
 
     let numeric = match &opts.data {
-        Some(path) => Some(numeric_diff(current, candidate, path, opts.max_rows)?),
+        Some(path) => match numeric_diff(current, candidate, path, opts.max_rows) {
+            Ok(n) => Some(n),
+            // The data does not satisfy one package's schema (e.g. extra columns are
+            // rejected): report it instead of aborting the comparison.
+            Err(ArtifactError::Data(e @ boundml_data::DataError::Header { .. })) => {
+                let severity = if opts.max_abs_diff.is_some() {
+                    Severity::Breaking
+                } else {
+                    Severity::Warning
+                };
+                changes.push(Change {
+                    area: "numeric".into(),
+                    severity,
+                    message: format!("numeric comparison not possible on this data: {e}"),
+                });
+                None
+            }
+            Err(e) => return Err(e),
+        },
         None => None,
     };
     if let (Some(n), Some(t)) = (&numeric, opts.max_abs_diff)

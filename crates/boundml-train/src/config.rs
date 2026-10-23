@@ -144,8 +144,8 @@ impl TrainConfig {
             return bad("training.batch_size must be 1..=1048576");
         }
         t.optimizer.validate()?;
-        if self.deploy.max_batch == 0 || self.deploy.sessions == 0 || self.deploy.sessions > 1024 {
-            return bad("deploy.max_batch must be >= 1 and deploy.sessions 1..=1024");
+        if self.deploy.max_batch == 0 || self.deploy.sessions == 0 || self.deploy.sessions > 256 {
+            return bad("deploy.max_batch must be >= 1 and deploy.sessions 1..=256");
         }
         if self.model.hidden.iter().any(|&h| h == 0 || h > 1 << 16) {
             return bad("model.hidden widths must be 1..=65536");
