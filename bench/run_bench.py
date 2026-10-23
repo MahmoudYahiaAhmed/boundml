@@ -1,8 +1,7 @@
-"""Benchmark driver: BoundML vs tract, PyTorch eager and ONNX Runtime on the demo datasets.
+"""Benchmark driver: BoundML vs PyTorch eager and ONNX Runtime on the demo datasets.
 
 Prerequisites (repository root):
     cargo build --release --workspace
-    cargo build --release --manifest-path bench/baselines/Cargo.toml
     python -I datasets/prepare.py --download   # then boundml split, see docs/walkthroughs.md
     boundml train examples/<dataset>/mlp.toml --checkpoint out/<dataset>/mlp/ckpt
 Run:
@@ -15,6 +14,10 @@ BoundML's batch-1 outputs (finite, |a - b| <= ATOL + RTOL * |b|) and aborts the 
 benchmark, without writing results, on any mismatch. Worker exit codes are checked and
 every worker step has a timeout, after which the worker is killed and the run aborts.
 Every run's record (command, exit status, timings, memory, parity error) is kept.
+
+Each runtime gets one untimed warm-up launch per dataset (file-system cache, first
+DLL load) before the measured runs. Peak memory is the OS high-water mark: the peak
+working set on Windows, `ru_maxrss` from `wait4` on Linux and macOS.
 """
 
 from __future__ import annotations
@@ -37,7 +40,6 @@ import psutil
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXE = ".exe" if os.name == "nt" else ""
 REL = ROOT / "target" / "release"
-BASE = ROOT / "bench" / "baselines" / "target" / "release"
 OUT = ROOT / "out" / "bench"
 PY = sys.executable
 RUNS = int(sys.argv[sys.argv.index("--runs") + 1]) if "--runs" in sys.argv else 5
@@ -45,10 +47,9 @@ ATOL, RTOL = 1e-5, 1e-4
 STEP_TIMEOUT_S = 300
 TRAIN_TIMEOUT_S = 900
 WINDOWS = os.name == "nt"
-INFER_MEMORY = ("peak_wset: OS-reported peak working set (high-water mark), read after all measurements"
-                if WINDOWS else "rss: resident set size read after all measurements (not a high-water mark)")
-TRAIN_MEMORY = ("peak_wset: OS-reported peak working set (high-water mark), polled every 5 ms"
-                if WINDOWS else "rss: maximum of resident set size sampled every 5 ms")
+MEMORY_METRIC = ("peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+                 if WINDOWS else "ru_maxrss: OS-reported peak resident set size (high-water mark) from wait4")
+INFER_MEMORY = TRAIN_MEMORY = MEMORY_METRIC
 
 DATASETS = {
     "breast_cancer": ("examples/breast_cancer/mlp.toml", "out/breast_cancer/mlp/ckpt", "datasets/breast_cancer/test.csv"),
@@ -75,8 +76,34 @@ def sha256(p: pathlib.Path) -> str:
 
 
 def peak_memory(p: psutil.Process) -> int:
-    info = p.memory_info()
-    return int(getattr(info, "peak_wset", 0) or getattr(info, "rss", 0))
+    """Windows only: the peak working set is a high-water mark, readable while the process lives."""
+    return int(p.memory_info().peak_wset)
+
+
+def wait_with_peak(proc: subprocess.Popen, timeout: float, ps: psutil.Process | None = None) -> tuple[int | None, int]:
+    """Wait for exit; return (exit code or None on timeout, peak memory in bytes).
+
+    Windows: poll the peak working set until exit. POSIX: `wait4` returns the child's
+    `ru_maxrss` (KiB on Linux, bytes on macOS), a true high-water mark.
+    """
+    deadline = time.perf_counter() + timeout
+    peak = 0
+    while time.perf_counter() < deadline:
+        if WINDOWS:
+            try:
+                peak = max(peak, peak_memory(ps or psutil.Process(proc.pid)))
+            except psutil.Error:
+                pass
+            if proc.poll() is not None:
+                return proc.returncode, peak
+        else:
+            pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
+            if pid:
+                proc.returncode = os.waitstatus_to_exitcode(status)
+                scale = 1 if sys.platform == "darwin" else 1024
+                return proc.returncode, int(usage.ru_maxrss) * scale
+        time.sleep(0.005)
+    return None, peak
 
 
 class Worker:
@@ -87,7 +114,8 @@ class Worker:
         self.t0 = time.perf_counter()
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      text=True, cwd=ROOT)
-        self.ps = psutil.Process(self.proc.pid)
+        self.ps = psutil.Process(self.proc.pid) if WINDOWS else None
+        self.peak = 0
         self.lines: queue.Queue = queue.Queue()
         self.stderr: list[str] = []
         threading.Thread(target=self._pump, daemon=True).start()
@@ -116,10 +144,9 @@ class Worker:
     def finish(self) -> int:
         self.proc.stdin.write("\n")
         self.proc.stdin.flush()
-        try:
-            code = self.proc.wait(timeout=STEP_TIMEOUT_S)
-        except subprocess.TimeoutExpired:
-            raise self.fail("did not exit after the results") from None
+        code, self.peak = wait_with_peak(self.proc, STEP_TIMEOUT_S, self.ps)
+        if code is None:
+            raise self.fail("did not exit after the results")
         if code != 0:
             raise self.fail("non-zero exit status")
         return code
@@ -163,8 +190,8 @@ def run_inference(cmd: list[str], parity_path: pathlib.Path, ref: list[float] | 
         raise
     result = json.loads(w.expect("results"))
     result["cold_start_s"] = cold
-    result["peak_memory_bytes"] = peak_memory(w.ps)
     code = w.finish()
+    result["peak_memory_bytes"] = w.peak
     record = {"command": [rel(c) for c in cmd], "exit_status": code, "wall_s": time.perf_counter() - w.t0,
               "parity_max_abs_error": max_err, "parity_outputs_checked": len(ref) * len(got), **result}
     return record, ref
@@ -232,25 +259,18 @@ def run_measured(cmd: list[str]) -> dict:
     the child while we poll it.
     """
     t0 = time.perf_counter()
-    proc = psutil.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
     chunks: list[str] = []
     errs: list[str] = []
     reader = threading.Thread(target=lambda: chunks.append(proc.stdout.read()), daemon=True)
     ereader = threading.Thread(target=lambda: errs.append(proc.stderr.read()), daemon=True)
     reader.start()
     ereader.start()
-    peak = 0
-    while proc.poll() is None:
-        if time.perf_counter() - t0 > TRAIN_TIMEOUT_S:
-            proc.kill()
-            proc.wait()
-            raise BenchError(f"{' '.join(map(rel, cmd))}: timed out after {TRAIN_TIMEOUT_S} s")
-        try:
-            peak = max(peak, peak_memory(proc))
-        except psutil.Error:
-            break
-        time.sleep(0.005)
-    proc.wait()
+    code, peak = wait_with_peak(proc, TRAIN_TIMEOUT_S)
+    if code is None:
+        proc.kill()
+        proc.wait()
+        raise BenchError(f"{' '.join(map(rel, cmd))}: timed out after {TRAIN_TIMEOUT_S} s")
     reader.join()
     ereader.join()
     if proc.returncode != 0:
@@ -260,7 +280,7 @@ def run_measured(cmd: list[str]) -> dict:
 
 
 def train_bench(cfg: str, test: str) -> dict:
-    keys = ("boundml_cli", "boundml_core_in_memory", "burn_ndarray", "pytorch_default", "pytorch_1_thread")
+    keys = ("boundml_cli", "boundml_core_in_memory", "pytorch_default", "pytorch_1_thread")
     res: dict = {k: [] for k in keys}
     control_hashes = set()
     for i in range(RUNS):
@@ -279,7 +299,6 @@ def train_bench(cfg: str, test: str) -> dict:
         control = OUT / f"control-{i}.json"
         for key, cmd in (
             ("boundml_core_in_memory", [str(REL / f"train_core{EXE}"), cfg, test, str(control)]),
-            ("burn_ndarray", [str(BASE / f"train_burn{EXE}"), cfg, test, str(control)]),
             ("pytorch_default", [PY, "bench/py_train.py", cfg, test, "default", str(control)]),
             ("pytorch_1_thread", [PY, "bench/py_train.py", cfg, test, "1", str(control)]),
         ):
@@ -316,7 +335,7 @@ def main() -> None:
         "date": time.strftime("%Y-%m-%d"),
         "command": f"python bench/run_bench.py --runs {RUNS}",
         "git_commit": git("rev-parse", "HEAD"),
-        "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
+        "git_uncommitted_files": git("status", "--porcelain", "--untracked-files=no").splitlines(),
         "cpu": platform.processor(),
         "logical_cpus": psutil.cpu_count(),
         "os": platform.platform(),
@@ -326,11 +345,10 @@ def main() -> None:
         "rustc": subprocess.run(["rustc", "--version"], capture_output=True, text=True).stdout.strip(),
         "boundml_build": "cargo --release (lto=thin, codegen-units=1), default target CPU",
         "torch_threads_default": torch.get_num_threads(),
-        "tract_onnx": "0.23.9 (bench/baselines/Cargo.lock), concrete-shape optimized plans, single thread",
-        "burn": "0.21.0 ndarray backend (bench/baselines/Cargo.lock)",
         "python_interpreter_startup_s": statistics.median(startup),
         "python_interpreter_startup_runs_s": startup,
         "runs_per_measurement": RUNS,
+        "warm_up_launches_per_runtime": 1,
         "parity": {"batch_sizes": [1, 7, 64], "atol": ATOL, "rtol": RTOL, "reference": "BoundML, batch 1",
                    "rule": "every output finite and |a - b| <= atol + rtol * |b|"},
         "inference_memory_metric": INFER_MEMORY,
@@ -350,11 +368,12 @@ def main() -> None:
         parity = OUT / f"{name}.parity.json"
         workers = {
             "boundml": [str(REL / f"infer{EXE}"), str(pkg), test, str(parity)],
-            "tract": [str(BASE / f"infer_tract{EXE}"), str(onnx), str(pkg), test, str(parity)],
             "pytorch_eager": [PY, "bench/py_infer.py", "torch", str(pkg), test, str(parity)],
             "onnxruntime": [PY, "bench/py_infer.py", "ort", str(pkg), test, str(parity), str(onnx)],
         }
         ref = None
+        for key, cmd in workers.items():  # untimed warm-up launch, parity still enforced
+            _, ref = run_inference(cmd, parity, ref, f"{name}/{key} (warm-up)")
         records: dict = {k: [] for k in workers}
         for _ in range(RUNS):
             for key, cmd in workers.items():

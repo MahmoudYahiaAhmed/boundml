@@ -43,8 +43,6 @@ python migrate/check_migration.py
 | Task | Command |
 |---|---|
 | Build, package, checksum and smoke-test a release archive | `python scripts/release.py --out dist` |
-| Re-record the README demo from the real binary | `python scripts/record_demo.py` |
-| Re-render banner, diagram and social preview (needs Chrome/Edge and Pillow) | `python scripts/render_assets.py` |
 | Benchmarks (see docs/benchmarks.md for prerequisites) | `python bench/run_bench.py --runs 5` then `python bench/report.py` |
 | Stress test | `python bench/run_stress.py 300` |
 

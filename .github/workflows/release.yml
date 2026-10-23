@@ -61,5 +61,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --draft --prerelease \
             --title "BoundML $GITHUB_REF_NAME (early release)" \
-            --notes-file "launch/release-notes-$GITHUB_REF_NAME.md" \
+            --notes-file ".github/release-notes/$GITHUB_REF_NAME.md" \
             dist/*.zip dist/*.tar.gz dist/*.sha256 dist/SHA256SUMS

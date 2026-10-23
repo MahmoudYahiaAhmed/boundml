@@ -32,6 +32,12 @@ class WorkerFailures(unittest.TestCase):
         with self.assertRaises(rb.BenchError):
             rb.run_measured([sys.executable, "-c", "import sys; sys.exit(3)"])
 
+    def test_measured_run_reports_a_real_peak(self):
+        # Allocate ~50 MB, then exit: the OS high-water mark must see it.
+        rec = rb.run_measured([sys.executable, "-c", "b = bytearray(50_000_000); b[::4096] = b'x' * len(b[::4096])"])
+        self.assertEqual(rec["exit_status"], 0)
+        self.assertGreater(rec["peak_memory_bytes"], 50_000_000)
+
     def test_worker_exiting_early_aborts(self):
         w = rb.Worker([sys.executable, "-c", "print('FIRST', flush=True); import sys; sys.exit(2)"])
         self.assertEqual(w.expect("FIRST"), "FIRST")

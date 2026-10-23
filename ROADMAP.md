@@ -10,8 +10,8 @@ issue template). Nothing below is a commitment or a date.
 - **Faster `boundml train` on small data**: optionally keep the parsed training set
   in memory when it fits a declared budget. Today the per-epoch CSV parse dominates
   training time ([benchmarks](docs/benchmarks.md)).
-- **Faster batch inference**: blocked/SIMD matmul. tract is currently 2.5–3.2× faster
-  on 256-row batches (model only).
+- **Faster batch inference**: blocked/SIMD matmul. ONNX Runtime is currently about
+  2–2.5× faster on 256-row batches (model only).
 - Early stopping on a validation metric, and a learning-rate schedule.
 - `boundml compare` thresholds for metric regressions, not only output drift.
 
@@ -27,4 +27,4 @@ issue template). Nothing below is a commitment or a date.
 ## Not planned
 
 GPU training, CNNs/transformers, arbitrary ONNX import, distributed training. Other
-tools already do these well (see [docs/decision.md](docs/decision.md)).
+tools already do these well.

@@ -13,11 +13,11 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / "docs" / "results" / "bench.json").read_text(encoding="utf-8"))
 DOC = ROOT / "docs" / "benchmarks.md"
-NAMES = {"boundml": "BoundML", "tract": "tract (native Rust)", "pytorch_eager": "PyTorch eager (Python)",
+NAMES = {"boundml": "BoundML", "pytorch_eager": "PyTorch eager (Python)",
          "onnxruntime": "ONNX Runtime (Python API)"}
 TRAIN = {"boundml_cli": "`boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation)",
          "boundml_core_in_memory": "BoundML core, in-memory (writes the control file)",
-         "burn_ndarray": "Burn 0.21 ndarray, controlled (decays biases too)", "pytorch_default": "PyTorch, default threads, controlled",
+         "pytorch_default": "PyTorch, default threads, controlled",
          "pytorch_1_thread": "PyTorch, 1 thread, controlled"}
 TITLES = {"breast_cancer": "Breast cancer (MLP 30-16-1, sigmoid output)", "wine_quality": "Wine quality (MLP 11-32-16-1, regression)"}
 
@@ -38,6 +38,11 @@ def mrows(v: float) -> str:
     return f"{v / 1e6:.2f} M"
 
 
+def uncommitted(env: dict) -> str:
+    files = [f.split(maxsplit=1)[-1] for f in env.get("git_uncommitted_files", [])]
+    return f" (uncommitted changes to: {', '.join(f'`{f}`' for f in files)})" if files else " (clean tree)"
+
+
 def rng(r: dict, key: str, fmt) -> str:
     """Median with the min–max over runs."""
     lo, hi = r["spread"][key]
@@ -48,7 +53,8 @@ def render() -> str:
     env = DATA["environment"]
     out = [f"Measured {env['date']} on {env['cpu']} ({env['logical_cpus']} logical CPUs), {env['os']}; "
            f"{env['runs_per_measurement']} runs per measurement; medians shown, with the min–max over runs in "
-           f"parentheses where given. Commit `{env['git_commit'][:7]}`{' (with uncommitted changes)' if env['git_dirty'] else ''}. "
+           f"parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `{env['git_commit'][:7]}`"
+           f"{uncommitted(env)}. "
            f"Python interpreter start-up (`python -I -c pass`): **{ms(env['python_interpreter_startup_s'])}**.", "",
            f"Timing ran only after every runtime's outputs matched BoundML's for every test row at batch sizes "
            f"{', '.join(map(str, env['parity']['batch_sizes']))} ({env['parity']['rule']}, atol {env['parity']['atol']:g}, "
@@ -93,16 +99,16 @@ def render() -> str:
 
 def readme_table() -> str:
     inf = DATA["datasets"]["breast_cancer"]["inference"]
-    order = ["boundml", "tract", "onnxruntime", "pytorch_eager"]
+    order = ["boundml", "onnxruntime", "pytorch_eager"]
     rows = [
         ("Process start → first prediction", lambda r: r["cold_start_s"], ms, True),
-        ("Peak process memory (Windows peak working set)", lambda r: r["peak_memory_bytes"], mib, True),
+        ("Peak process memory (OS high-water mark)", lambda r: r["peak_memory_bytes"], mib, True),
         ("1-row latency, p50, incl. preprocessing", lambda r: r["latency_e2e_us"]["p50"], lambda v: f"{v:.1f} µs", True),
         ("Batch-256 throughput, model only", lambda r: r["batch256_core_rows_per_s"], lambda v: f"{v / 1e6:.1f} M rows/s", False),
         ("Batch-256 throughput, incl. preprocessing", lambda r: r["batch256_e2e_rows_per_s"], lambda v: f"{v / 1e6:.1f} M rows/s", False),
     ]
-    out = ["| 30-feature MLP, breast-cancer data | BoundML | tract (Rust) | ONNX Runtime (Python) | PyTorch (Python) |",
-           "|---|---|---|---|---|"]
+    out = ["| 30-feature MLP, breast-cancer data | BoundML | ONNX Runtime (Python) | PyTorch (Python) |",
+           "|---|---|---|---|"]
     for label, f, fmt, low in rows:
         best = (min if low else max)(order, key=lambda k: f(inf[k]))
         cells = [f"**{fmt(f(inf[k]))}**" if k == best else fmt(f(inf[k])) for k in order]

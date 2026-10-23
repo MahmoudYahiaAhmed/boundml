@@ -22,10 +22,10 @@ production-validated, and no external users yet.
 | Source-review fixes (non-finite outputs, temp files, session allowance, metadata preflight, buffer lengths, server recovery) | `review_*.rs` tests in core, artifact and CLI; each failed on `e567a00` and passes now |
 | PyTorch 2.12 / Keras 3.14 import | `migrate/check_migration.py` → `docs/results/migration.json` |
 | Real-data demonstrations | 2 UCI datasets, `docs/walkthroughs.md` |
-| Benchmarks incl. native runtime (tract) and Burn, parity-gated, controlled training | `docs/benchmarks.md`, raw `docs/results/bench.json`; driver checks in `bench/test_run_bench.py`; earlier records in `docs/results/history/` |
+| Benchmarks vs PyTorch and ONNX Runtime, parity-gated, controlled training | `docs/benchmarks.md`, raw `docs/results/bench.json`; driver checks in `bench/test_run_bench.py`; earlier records in `docs/results/history/` |
 | 5-minute stress test (4 concurrent sessions within the declared allowance) | `docs/results/stress.json` |
 | Release archive smoke test (extracted archive, path with spaces) | `scripts/release.py` → `dist/smoke-x86_64-pc-windows-msvc.json`, copied to `docs/results/` after the build (an archive cannot contain the record of its own checksum) |
-| Newcomer rehearsal from a fresh clone | `launch/readiness-report.md` |
+| Newcomer rehearsal (source copy and archive, paths with spaces) | independent docs-only run; every gap found was fixed or documented |
 
 Local checks: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test
 --workspace --locked`, `cargo doc` with `-D warnings`, `cargo package` for
@@ -63,13 +63,13 @@ confirmed. Closing it needs a reproduction in that environment.
 | CI status of any kind | adding a remote and pushing branch `main` (the branch `ci.yml` triggers on); **no workflow has ever run** |
 | crates.io packages (`cargo install boundml-cli`) | publishing in order core → data → artifact → train → cli; dependent dry-runs fail until their dependencies are on crates.io |
 | Private vulnerability reporting route | enabling it in repository settings |
-| Demand / fit for real workloads | external design-partner evaluations (`docs/design-partner-plan.md`) |
+| Demand / fit for real workloads | 3–5 outside developers deploying their own models |
 | Fuzzing, `cargo audit`/`cargo deny` | not run |
 
 ## Known limitations
 
-CPU only, with single-threaded scalar kernels. tract has higher large-batch
-throughput on the wider model. Dense models on numeric features only. `boundml train`
+CPU only, with single-threaded scalar kernels. ONNX Runtime has higher large-batch
+throughput. Dense models on numeric features only. `boundml train`
 re-parses the CSV every epoch. Checksums do not authenticate. The HTTP server has no
 auth or TLS. The memory bound covers planned tensor storage, not the whole process.
 

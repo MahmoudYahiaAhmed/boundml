@@ -1,14 +1,14 @@
 //! BoundML core training on in-memory data, the like-for-like counterpart of
-//! `bench/baselines/src/bin/train_burn.rs` and `bench/py_train.py`. It uses the same
+//! `bench/py_train.py`. It uses the same
 //! config, standardization, initialization, output-bias init, AdamW and a seeded
 //! per-epoch shuffle, but no CSV streaming or per-epoch validation (which `boundml
 //! train` does). Only the training loop is timed.
 //!
 //! For the controlled comparison, `train_core` writes `<control.json>` before timing:
 //! the standardized train/test tensors, the initial parameters (after output-bias
-//! initialization) and every epoch's row permutation. `py_train.py --control` and
-//! `train_burn --control` load it, so all three trainers start from the same weights
-//! and visit the same batches in the same order.
+//! initialization) and every epoch's row permutation. `py_train.py --control` loads
+//! it, so both trainers start from the same weights and visit the same batches in the
+//! same order.
 //!
 //! Usage: `train_core <config.toml> <test.csv> [<control.json>]`
 
