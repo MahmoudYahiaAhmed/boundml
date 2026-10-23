@@ -1,0 +1,124 @@
+{
+ "archive": "boundml-0.1.0-x86_64-pc-windows-msvc.zip",
+ "passed": true,
+ "steps": [
+  {
+   "step": "extract archive",
+   "seconds": 0.03439040000375826,
+   "exit": 0
+  },
+  {
+   "step": "archive links resolve",
+   "seconds": 0.0,
+   "exit": 0,
+   "passed": true,
+   "output": ""
+  },
+  {
+   "step": "version",
+   "command": "boundml --version",
+   "seconds": 0.1409293000033358,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "boundml 0.1.0 (revision ba25bcba4b, x86_64-pc-windows-msvc)"
+  },
+  {
+   "step": "init",
+   "command": "boundml init demo",
+   "seconds": 0.015056999996886589,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "created example in demo:\n  demo/model.toml\n  demo/data/train.csv\n  demo/data/valid.csv\n  demo/data/test.csv\nnext: boundml validate demo/model.toml"
+  },
+  {
+   "step": "validate",
+   "command": "boundml validate demo/model.toml",
+   "seconds": 0.02499359999637818,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "demo/model.toml: valid\n  task Regression, 3 features, data headers ok (2 file(s))\n  training plan 32.6 KiB (budget 16MiB), inference plan 66.6 KiB (budget 1MiB)"
+  },
+  {
+   "step": "train",
+   "command": "boundml train demo/model.toml --checkpoint demo/ckpt --quiet",
+   "seconds": 0.17403090000152588,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "training complete after 1890 steps in 0.16s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
+  },
+  {
+   "step": "evaluate",
+   "command": "boundml evaluate demo/ckpt --data demo/data/test.csv",
+   "seconds": 0.03030600000056438,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "metrics on demo/data/test.csv:\n  mae            0.1465   (constant baseline 2.2394)\n  mse            0.0352   (constant baseline 11.0583)\n  r2             0.9968   (constant baseline -0.0071)\n  rmse           0.1877   (constant baseline 3.3254)\n  rows         400.0000   (constant baseline 400.0000)"
+  },
+  {
+   "step": "pack",
+   "command": "boundml pack demo/ckpt --out demo/model.boundml",
+   "seconds": 0.028655499998421874,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "packed 'example-regression' -> demo/model.boundml (17 synthetic self-test vectors, verified after write)"
+  },
+  {
+   "step": "verify",
+   "command": "boundml verify demo/model.boundml",
+   "seconds": 0.011828100003185682,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "integrity, version and consistency checks passed; self-test: 17 vector(s), max abs error 0e0 -> PASS"
+  },
+  {
+   "step": "predict",
+   "command": "boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3",
+   "seconds": 0.01515760000620503,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "wrote 400 predictions to demo/pred.csv in 0.001s\n  line   power\n     2  4.5001\n     3  6.3667\n     4  7.7849"
+  },
+  {
+   "step": "budget failure",
+   "command": "boundml plan demo/model.toml --mode infer --tensor-budget 64KiB",
+   "seconds": 0.012575299995660316,
+   "exit": 4,
+   "expected_exit": 4,
+   "passed": true,
+   "output": "error: BML-C005 tensor budget exceeded: plan needs 68228 bytes but the budget is 65536 bytes; largest contributors: arena x 2 session(s) (65536 bytes), shared weights (2692 bytes), dense0.act (16384 bytes), dense0.matmul (16384 bytes), dense0.pre (16384 bytes)"
+  },
+  {
+   "step": "real data: train",
+   "command": "boundml train <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\examples\\breast_cancer\\linear.toml --checkpoint bc/ckpt --quiet",
+   "seconds": 0.38303450000239536,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "training complete after 960 steps in 0.37s; checkpoint: bc/ckpt\nfinal epoch: train_loss=0.04783  valid: accuracy=0.9872 f1=0.9818 log_loss=0.0250 precision=0.9643 recall=1.0000"
+  },
+  {
+   "step": "real data: evaluate",
+   "command": "boundml evaluate bc/ckpt --data <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv",
+   "seconds": 0.026871300004131626,
+   "exit": 0,
+   "expected_exit": 0,
+   "passed": true,
+   "output": "metrics on <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv:\n  accuracy       0.9597   (constant baseline 0.5806)\n  f1             0.9495   (constant baseline 0.0000)\n  log_loss       0.1379   (constant baseline 0.6870)\n  precision      1.0000   (constant baseline 0.0000)\n  recall         0.9038   (constant baseline 0.0000)\n  rows         124.0000   (constant baseline 124.0000)"
+  }
+ ],
+ "seconds_init_to_first_prediction": 0.23290100000303937,
+ "seconds_extract": 0.03439040000375826,
+ "sha256": "f5e3fa9770854b625a3289991b5df48339e13c460195c44f152063d523995640",
+ "bytes": 2159512,
+ "target": "x86_64-pc-windows-msvc",
+ "built_on": "Windows-11-10.0.26200-SP0",
+ "version": "0.1.0"
+}
