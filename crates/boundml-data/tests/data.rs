@@ -280,3 +280,50 @@ fn split_replaces_existing_outputs_and_leaves_no_temporary_files() {
         .collect();
     assert!(tmp.is_empty(), "{tmp:?}");
 }
+
+#[test]
+fn preprocessor_apply_checks_lengths_in_every_build() {
+    let s = schema(MissingPolicy::Reject, ExtraColumns::Ignore);
+    let pre = Preprocessor {
+        normalize: Normalize::None,
+        missing: MissingPolicy::Reject,
+        features: s
+            .features
+            .iter()
+            .map(|n| FeatureStats {
+                name: n.clone(),
+                mean: 0.0,
+                std: 1.0,
+                count: 1,
+                missing: 0,
+                constant: false,
+            })
+            .collect(),
+        rows_fitted: 1,
+    };
+    let mut out2 = [0.0f32; 2];
+    let mut out1 = [0.0f32; 1];
+    let mut out3 = [0.0f32; 3];
+    assert!(matches!(
+        pre.apply(&[Some(1.0)], &mut out2),
+        Err(ApplyError::Length { .. })
+    ));
+    assert!(matches!(
+        pre.apply(&[Some(1.0); 3], &mut out2),
+        Err(ApplyError::Length { .. })
+    ));
+    assert!(matches!(
+        pre.apply(&[Some(1.0); 2], &mut out1),
+        Err(ApplyError::Length { .. })
+    ));
+    assert!(matches!(
+        pre.apply(&[Some(1.0); 2], &mut out3),
+        Err(ApplyError::Length { .. })
+    ));
+    pre.apply(&[Some(1.0), Some(2.0)], &mut out2).unwrap();
+    assert_eq!(out2, [1.0, 2.0]);
+    assert_eq!(
+        pre.apply(&[None, Some(2.0)], &mut out2),
+        Err(ApplyError::Feature(0))
+    );
+}

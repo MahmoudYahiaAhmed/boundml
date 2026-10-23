@@ -656,5 +656,6 @@ pub fn serve_config(
         max_rows,
         timeout: Duration::from_millis(timeout_ms),
         simulate_compute_delay: Duration::ZERO,
+        hooks: None,
     })
 }

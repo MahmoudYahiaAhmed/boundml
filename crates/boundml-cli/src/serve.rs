@@ -10,8 +10,13 @@
 //!   rejected immediately with 503 (no unbounded queue);
 //! * each request (including body read and queue wait) has a deadline (408);
 //! * a request whose client disconnects or times out while waiting never starts
-//!   computing; one that already started finishes its bounded batch and returns
-//!   its predictor to the pool, so CPU work per admitted request is bounded;
+//!   computing; one that already started is **not** cancelled: it finishes its
+//!   bounded batch while keeping its compute slot, then returns its predictor to the
+//!   pool, so CPU work per admitted request is bounded and slots are never
+//!   oversubscribed;
+//! * if a computation panics, its predictor is replaced by a fresh one (same session
+//!   allowance); if no replacement can be created, that slot is retired and
+//!   `/readyz` reports how many workers remain usable (503 when none);
 //! * SIGINT/Ctrl-C stops accepting connections and drains in-flight requests.
 //!
 //! The service binds to localhost by default and has no authentication or TLS.
@@ -25,7 +30,7 @@ use axum::{Json, Router};
 use boundml_artifact::{Package, Predictor};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::Semaphore;
@@ -41,6 +46,23 @@ pub struct ServeConfig {
     /// Test hook: extra sleep inside the compute section (default zero).
     #[doc(hidden)]
     pub simulate_compute_delay: Duration,
+    /// Test hooks (one-shot panic / hold); `None` in production.
+    #[doc(hidden)]
+    pub hooks: Option<Arc<TestHooks>>,
+}
+
+/// One-shot synchronization hooks for tests of the compute section.
+#[doc(hidden)]
+#[derive(Debug, Default)]
+pub struct TestHooks {
+    /// The next computation panics (once).
+    pub panic_next: AtomicBool,
+    /// The next post-panic predictor replacement fails (once).
+    pub fail_next_replacement: AtomicBool,
+    /// The next computation signals the first channel when it starts and then waits
+    /// on the second until the test releases it (once).
+    #[allow(clippy::type_complexity)]
+    pub hold_next: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
 }
 
 impl Default for ServeConfig {
@@ -52,6 +74,7 @@ impl Default for ServeConfig {
             max_rows: 256,
             timeout: Duration::from_secs(5),
             simulate_compute_delay: Duration::ZERO,
+            hooks: None,
         }
     }
 }
@@ -63,8 +86,64 @@ pub struct AppState {
     admission: Semaphore,
     cfg: ServeConfig,
     shutting_down: AtomicBool,
+    /// Workers that still own a usable predictor (drops only if a replacement after a
+    /// panic cannot be created; readiness then reports it).
+    usable_workers: AtomicUsize,
     pub served: AtomicU64,
     pub rejected_overload: AtomicU64,
+    pub replaced_after_panic: AtomicU64,
+}
+
+/// A predictor leased from the pool together with its compute permit. Dropping the
+/// lease always settles both: the predictor goes back to the pool; after a panic it
+/// is replaced by a fresh one (its arena may hold a partial computation), and if no
+/// replacement can be created the permit is forgotten, so capacity shrinks instead of
+/// admitting requests that would find no predictor.
+struct Lease {
+    st: Arc<AppState>,
+    predictor: Option<Predictor>,
+    permit: Option<tokio::sync::OwnedSemaphorePermit>,
+}
+
+impl Drop for Lease {
+    fn drop(&mut self) {
+        let Some(p) = self.predictor.take() else {
+            return;
+        };
+        let replacement = if std::thread::panicking() {
+            drop(p); // release its session before reserving a new one
+            let forced_failure = self
+                .st
+                .cfg
+                .hooks
+                .as_ref()
+                .is_some_and(|h| h.fail_next_replacement.swap(false, Ordering::AcqRel));
+            match self.st.pkg.predictor(self.st.cfg.max_rows) {
+                Ok(_) if forced_failure => None,
+                Ok(fresh) => {
+                    self.st.replaced_after_panic.fetch_add(1, Ordering::Relaxed);
+                    Some(fresh)
+                }
+                Err(_) => None,
+            }
+        } else {
+            Some(p)
+        };
+        match replacement {
+            Some(p) => self
+                .st
+                .pool
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(p),
+            None => {
+                self.st.usable_workers.fetch_sub(1, Ordering::AcqRel);
+                if let Some(permit) = self.permit.take() {
+                    permit.forget();
+                }
+            }
+        }
+    }
 }
 
 impl AppState {
@@ -88,6 +167,7 @@ impl AppState {
                 pkg.manifest().bounds.sessions
             ));
         }
+        let cfg_workers = cfg.workers;
         let pool = (0..cfg.workers)
             .map(|_| pkg.predictor(cfg.max_rows).map_err(|e| e.to_string()))
             .collect::<Result<Vec<_>, _>>()?;
@@ -98,8 +178,10 @@ impl AppState {
             pkg,
             cfg,
             shutting_down: AtomicBool::new(false),
+            usable_workers: AtomicUsize::new(cfg_workers),
             served: AtomicU64::new(0),
             rejected_overload: AtomicU64::new(0),
+            replaced_after_panic: AtomicU64::new(0),
         }))
     }
 
@@ -151,10 +233,19 @@ async fn ready(State(s): State<Arc<AppState>>) -> Response {
     if s.shutting_down.load(Ordering::SeqCst) {
         return error(StatusCode::SERVICE_UNAVAILABLE, "BML-S003", "shutting down");
     }
+    let usable = s.usable_workers.load(Ordering::Acquire);
+    if usable == 0 {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "BML-S004",
+            "no usable workers (a predictor could not be replaced after a failure)",
+        );
+    }
     if s.admission.available_permits() == 0 {
         return error(StatusCode::SERVICE_UNAVAILABLE, "BML-S001", "at capacity");
     }
-    Json(json!({"status": "ready"})).into_response()
+    Json(json!({"status": "ready", "usable_workers": usable, "workers": s.cfg.workers}))
+        .into_response()
 }
 
 async fn model_info(State(s): State<Arc<AppState>>) -> Json<Value> {
@@ -263,19 +354,23 @@ async fn predict(State(s): State<Arc<AppState>>, body: axum::body::Bytes) -> Res
         return error(StatusCode::SERVICE_UNAVAILABLE, "BML-S003", "shutting down");
     };
     let st = Arc::clone(&s);
+    // The compute permit moves into the blocking task together with the predictor,
+    // so a computation that outlives its request (timeout, disconnect) keeps its slot
+    // until it actually finishes; it is not cancelled once started.
     let result = tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        let mut predictor = st
+        let predictor = st
             .pool
             .lock()
-            .map_err(|_| "predictor pool poisoned".to_string())?
+            .unwrap_or_else(|e| e.into_inner())
             .pop()
             .ok_or_else(|| "no idle predictor".to_string())?;
-        let out = run_rows(&st, &mut predictor, &req.rows);
-        if let Ok(mut pool) = st.pool.lock() {
-            pool.push(predictor);
-        }
-        Ok::<_, String>(out)
+        let mut lease = Lease {
+            st: Arc::clone(&st),
+            predictor: Some(predictor),
+            permit: Some(permit),
+        };
+        let p = lease.predictor.as_mut().expect("leased");
+        Ok::<_, String>(run_rows(&st, p, &req.rows))
     })
     .await;
     match result {
@@ -330,6 +425,17 @@ fn run_rows(s: &AppState, p: &mut Predictor, rows: &[Row]) -> Result<PredictResp
     }
     if !s.cfg.simulate_compute_delay.is_zero() {
         std::thread::sleep(s.cfg.simulate_compute_delay);
+    }
+    if let Some(h) = &s.cfg.hooks {
+        if let Some((entered, release)) =
+            h.hold_next.lock().unwrap_or_else(|e| e.into_inner()).take()
+        {
+            let _ = entered.send(());
+            let _ = release.recv();
+        }
+        if h.panic_next.swap(false, Ordering::AcqRel) {
+            panic!("test hook: simulated panic inside the compute section");
+        }
     }
     let mut out = vec![0.0f32; n * no];
     p.predict_raw(&raw, n, &mut out).map_err(|e| {
