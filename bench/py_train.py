@@ -4,7 +4,11 @@ Same architecture, initialization family, output-bias init, AdamW settings (weig
 decay on weights only), batch size, epochs, train-only standardization and a
 per-epoch shuffle. Prints one JSON line with wall time and test metrics.
 
-    python bench/py_train.py <config.toml> <test.csv> <threads|default>
+    python bench/py_train.py <config.toml> <test.csv> <threads|default> [<control.json>]
+
+With a control file written by `train_core`, the standardized data, initial weights
+and every epoch's batch order come from that file instead, so this run starts from
+the same parameters and visits the same batches as BoundML's in-memory trainer.
 """
 
 import json
@@ -44,6 +48,15 @@ def main() -> None:
     mean, std = xtr.mean(0), xtr.std(0)
     std[std < 1e-12] = 1.0
     xtr, xte = (xtr - mean) / std, (xte - mean) / std
+    control = json.loads(pathlib.Path(sys.argv[4]).read_text()) if len(sys.argv) > 4 else None
+    if control:
+        nf = control["n_features"]
+        xtr = np.array(control["x_train"], dtype=np.float32).reshape(-1, nf)
+        xte = np.array(control["x_test"], dtype=np.float32).reshape(-1, nf)
+        ytr = np.array(control["y_train"])
+        yte = np.array(control["y_test"])
+        if d["task"] == "classification":
+            ytr, yte = ytr.astype(np.int64), yte.astype(np.int64)
 
     torch.manual_seed(cfg.get("seed", 0))
     classes = len(d.get("classes", []))
@@ -71,6 +84,14 @@ def main() -> None:
         else:
             pri = np.bincount(ytr, minlength=classes) / len(ytr)
             last.copy_(torch.tensor(np.log(np.maximum(pri, 1e-3))))
+    if control:
+        linears = [layer for layer in layers if isinstance(layer, torch.nn.Linear)]
+        with torch.no_grad():
+            for i, lin in enumerate(linears):
+                w = control["init"][f"dense{i}.weight"]
+                b = control["init"][f"dense{i}.bias"]
+                lin.weight.copy_(torch.tensor(w["values"], dtype=torch.float32).reshape(w["rows"], w["cols"]).T)
+                lin.bias.copy_(torch.tensor(b["values"], dtype=torch.float32))
     o = t["optimizer"]
     decay = [p for n, p in model.named_parameters() if n.endswith("weight")]
     nodecay = [p for n, p in model.named_parameters() if n.endswith("bias")]
@@ -90,8 +111,9 @@ def main() -> None:
     bs = t["batch_size"]
     g = torch.Generator().manual_seed(cfg.get("seed", 0))
     start = time.perf_counter()
-    for _ in range(t["epochs"]):
-        perm = torch.randperm(len(xt), generator=g)
+    perms = [torch.tensor(p, dtype=torch.long) for p in control["perms"]] if control else None
+    for epoch in range(t["epochs"]):
+        perm = perms[epoch] if perms else torch.randperm(len(xt), generator=g)
         for i in range(0, len(xt), bs):
             idx = perm[i : i + bs]
             opt.zero_grad()
@@ -106,7 +128,7 @@ def main() -> None:
         metric = {"accuracy": float(((z[:, 0] >= 0) == (yte == 1)).mean())}
     else:
         metric = {"accuracy": float((z.argmax(1) == yte).mean())}
-    print(json.dumps({"runtime": "pytorch", "threads": threads, "torch": torch.__version__, "train_seconds": secs, "test": metric}))
+    print(json.dumps({"runtime": "pytorch", "threads": threads, "controlled": bool(control), "torch": torch.__version__, "train_seconds": secs, "test": metric}))
 
 
 if __name__ == "__main__":

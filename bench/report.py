@@ -15,8 +15,10 @@ DATA = json.loads((ROOT / "docs" / "results" / "bench.json").read_text(encoding=
 DOC = ROOT / "docs" / "benchmarks.md"
 NAMES = {"boundml": "BoundML", "tract": "tract (native Rust)", "pytorch_eager": "PyTorch eager (Python)",
          "onnxruntime": "ONNX Runtime (Python API)"}
-TRAIN = {"boundml_cli": "`boundml train` (CSV streamed every epoch + validation)", "boundml_core_in_memory": "BoundML core, in-memory",
-         "burn_ndarray": "Burn 0.21 ndarray", "pytorch_default": "PyTorch, 8 threads", "pytorch_1_thread": "PyTorch, 1 thread"}
+TRAIN = {"boundml_cli": "`boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation)",
+         "boundml_core_in_memory": "BoundML core, in-memory (writes the control file)",
+         "burn_ndarray": "Burn 0.21 ndarray, controlled (decays biases too)", "pytorch_default": "PyTorch, default threads, controlled",
+         "pytorch_1_thread": "PyTorch, 1 thread, controlled"}
 TITLES = {"breast_cancer": "Breast cancer (MLP 30-16-1, sigmoid output)", "wine_quality": "Wine quality (MLP 11-32-16-1, regression)"}
 
 
@@ -36,31 +38,52 @@ def mrows(v: float) -> str:
     return f"{v / 1e6:.2f} M"
 
 
+def rng(r: dict, key: str, fmt) -> str:
+    """Median with the min–max over runs."""
+    lo, hi = r["spread"][key]
+    return f"{fmt(r[key])} ({fmt(lo)}–{fmt(hi)})"
+
+
 def render() -> str:
     env = DATA["environment"]
     out = [f"Measured {env['date']} on {env['cpu']} ({env['logical_cpus']} logical CPUs), {env['os']}; "
-           f"{env['runs_per_measurement']} runs per measurement, medians shown. Python interpreter start-up "
-           f"(`python -I -c pass`): **{ms(env['python_interpreter_startup_s'])}**.", ""]
+           f"{env['runs_per_measurement']} runs per measurement; medians shown, with the min–max over runs in "
+           f"parentheses where given. Commit `{env['git_commit'][:7]}`{' (with uncommitted changes)' if env['git_dirty'] else ''}. "
+           f"Python interpreter start-up (`python -I -c pass`): **{ms(env['python_interpreter_startup_s'])}**.", "",
+           f"Timing ran only after every runtime's outputs matched BoundML's for every test row at batch sizes "
+           f"{', '.join(map(str, env['parity']['batch_sizes']))} ({env['parity']['rule']}, atol {env['parity']['atol']:g}, "
+           f"rtol {env['parity']['rtol']:g}). Memory is `{env['inference_memory_metric'].split(':')[0]}`: "
+           f"{env['inference_memory_metric'].split(': ', 1)[1]}.", ""]
     for name, d in DATA["datasets"].items():
         inf = d["inference"]
         out += [f"### {TITLES.get(name, name)}", "", "**Start-up and memory**", "",
-                "| Runtime | Process start → first prediction | Framework import | Model load | Peak process working set | Planned tensor bytes |",
-                "|---|---|---|---|---|---|"]
+                "| Runtime | Process start → first prediction | Framework import | Model load | Peak process memory | Planned tensor bytes | Max parity error |",
+                "|---|---|---|---|---|---|---|"]
         for k, r in inf.items():
             imp = ms(r["import_s"]) if "import_s" in r else "—"
             planned = f"{r['planned_tensor_bytes']:,} B" if "planned_tensor_bytes" in r else "not reported"
-            out.append(f"| {NAMES[k]} | {ms(r['cold_start_s'])} | {imp} | {ms(r['load_s'])} | {mib(r['peak_working_set_bytes'])} | {planned} |")
+            out.append(f"| {NAMES[k]} | {rng(r, 'cold_start_s', ms)} | {imp} | {ms(r['load_s'])} | {rng(r, 'peak_memory_bytes', mib)} | "
+                       f"{planned} | {r['spread']['parity_max_abs_error'][1]:.1e} |")
         out += ["", "**Warm inference** (µs per call, p50 / p95 / p99; throughput in rows/s for one 256-row batch)", "",
                 "| Runtime | Threads | Preprocessing alone (1 row) | Core inference, 1 row | Preprocess + infer, 1 row | Core, batch 256 | Preprocess + infer, batch 256 |",
                 "|---|---|---|---|---|---|---|"]
         for k, r in inf.items():
             out.append(f"| {NAMES[k]} | {r['threads']} | {us(r['preprocess_us_per_row'])} | {us(r['latency_core_us'])} | {us(r['latency_e2e_us'])} | "
-                       f"{mrows(r['batch256_core_rows_per_s'])} | {mrows(r['batch256_e2e_rows_per_s'])} |")
+                       f"{rng(r, 'batch256_core_rows_per_s', mrows)} | {rng(r, 'batch256_e2e_rows_per_s', mrows)} |")
+        copies = "; ".join(f"{NAMES[k]}: {r['unavoidable_copies']}" for k, r in inf.items() if "unavoidable_copies" in r)
+        out += ["", f"Input copies inside the timed calls: {copies}."]
         tr = d["training"]
-        out += ["", "**Training** (same architecture, optimizer settings, batch size and epochs; test split)", "",
-                "| Trainer | Train time | Test metric | Peak process working set |", "|---|---|---|---|"]
+        out += ["", "**Training** (test split). The controlled rows load one control file written by BoundML's in-memory "
+                "trainer: the same standardized data, initial weights and per-epoch batch order. The CLI row is a separate "
+                "end-to-end measurement with its own streamed batch order.", "",
+                "| Trainer | Train time (min–max) | Test metric (all runs) | Peak process memory |", "|---|---|---|---|"]
         for k, r in tr.items():
-            out.append(f"| {TRAIN[k]} | {ms(r['median_train_seconds'])} | {r['metric']} {r['median_test_metric']:.4f} | {mib(r['median_peak_working_set_bytes'])} |")
+            if k not in TRAIN:
+                continue
+            lo, hi = r["train_seconds_range"]
+            metrics = ", ".join(f"{v:.4f}" for v in sorted(set(r["all_test_metric"])))
+            out.append(f"| {TRAIN[k]} | {ms(r['median_train_seconds'])} ({ms(lo)}–{ms(hi)}) | {r['metric']} {metrics} | "
+                       f"{mib(r['median_peak_memory_bytes'])} |")
         s = d["sizes"]
         out += ["", f"Sizes: `boundml` binary {s['boundml_cli_binary_bytes'] / 1e6:.1f} MB; package {s['boundml_package_bytes'] / 1e3:.1f} KB "
                 f"(includes schema, preprocessing, self-tests); ONNX file {s['onnx_model_bytes'] / 1e3:.1f} KB; "
@@ -73,7 +96,7 @@ def readme_table() -> str:
     order = ["boundml", "tract", "onnxruntime", "pytorch_eager"]
     rows = [
         ("Process start → first prediction", lambda r: r["cold_start_s"], ms, True),
-        ("Peak process working set", lambda r: r["peak_working_set_bytes"], mib, True),
+        ("Peak process memory (Windows peak working set)", lambda r: r["peak_memory_bytes"], mib, True),
         ("1-row latency, p50, incl. preprocessing", lambda r: r["latency_e2e_us"]["p50"], lambda v: f"{v:.1f} µs", True),
         ("Batch-256 throughput, model only", lambda r: r["batch256_core_rows_per_s"], lambda v: f"{v / 1e6:.1f} M rows/s", False),
         ("Batch-256 throughput, incl. preprocessing", lambda r: r["batch256_e2e_rows_per_s"], lambda v: f"{v / 1e6:.1f} M rows/s", False),
@@ -96,7 +119,7 @@ def targets() -> str:
     for name, d in DATA["datasets"].items():
         i, t = d["inference"], d["training"]
         b, p, o = i["boundml"], i["pytorch_eager"], i["onnxruntime"]
-        r1 = b["peak_working_set_bytes"] / p["peak_working_set_bytes"]
+        r1 = b["peak_memory_bytes"] / p["peak_memory_bytes"]
         r2 = b["cold_start_s"] / p["cold_start_s"]
         r3 = b["batch256_e2e_rows_per_s"] / o["batch256_e2e_rows_per_s"]
         r3c = b["batch256_core_rows_per_s"] / o["batch256_core_rows_per_s"]
@@ -108,7 +131,8 @@ def targets() -> str:
         else:
             q, ok5, thr5 = f"RMSE {qb:.4f} vs {qp:.4f} ({(qb / qp - 1) * 100:+.1f}%)", abs(qb / qp - 1) <= 0.10, "within 10% RMSE"
         ds = TITLES.get(name, name).split(" (")[0]
-        note = "" if r3c >= 0.5 else "; a model-only comparison would **not** meet it"
+        note = ("; model only is also at or above 50%" if r3c >= 0.5
+                else "; the model-only ratio is **below** 50%, so a model-only reading of T3 is not met")
         out += [
             f"| T1 memory | {ds} | ≤ 20% of PyTorch peak | {r1 * 100:.1f}% | {verdict(r1 <= 0.20)} |",
             f"| T2 cold start | {ds} | ≤ 10% of PyTorch | {r2 * 100:.1f}% | {verdict(r2 <= 0.10)} |",

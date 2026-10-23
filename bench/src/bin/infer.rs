@@ -1,15 +1,23 @@
 //! BoundML inference benchmark worker. Protocol (driven by `bench/run_bench.py`):
-//! prints `FIRST` right after the first prediction, then one JSON line of results,
-//! then waits for a line on stdin so the driver can read peak process memory.
+//! prints `FIRST` right after the first prediction; writes the parity outputs (every
+//! test row, raw values in, at batch sizes 1, 7 and 64) to `<parity.json>` and prints
+//! `PARITY`; then times, prints one JSON line of results, and waits for a line on
+//! stdin so the driver can read peak process memory. Parity is computed before and
+//! outside every timed region, and every timed result goes through `black_box`.
 //!
 //! Reported separately: package load time (integrity checks, validation, plan
 //! recomputation, self-test), preprocessing alone, warm core inference on already
-//! standardized inputs, and end-to-end raw-to-output prediction.
+//! standardized inputs, and end-to-end raw-to-output prediction. Model-only calls
+//! still copy the f32 input into the planned arena: that copy is part of the public
+//! `predict_into` API.
+//!
+//! Usage: `infer <package> <test.csv> <parity.json>`
 
 use boundml_artifact::Package;
 use boundml_core::InferenceSession;
 use boundml_data::{CsvSource, RawRow};
 use serde_json::json;
+use std::hint::black_box;
 use std::io::{BufRead, Write};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -45,7 +53,7 @@ fn rows_per_s<F: FnMut()>(mut f: F) -> f64 {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    let (pkg_path, csv_path) = (&args[1], &args[2]);
+    let (pkg_path, csv_path, parity_path) = (&args[1], &args[2], &args[3]);
     let t_load = Instant::now();
     let pkg = Arc::new(Package::load(pkg_path.as_ref())?);
     if !pkg.verify()?.passed {
@@ -65,6 +73,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("FIRST");
     std::io::stdout().flush()?;
 
+    let mut parity = serde_json::Map::new();
+    for bs in [1usize, 7, 64] {
+        let mut all = Vec::with_capacity(rows.len() * no);
+        for chunk in rows.chunks(bs) {
+            let flat: Vec<Option<f64>> = chunk.iter().flatten().copied().collect();
+            let n = chunk.len();
+            p.predict_raw(&flat, n, &mut out[..n * no])?;
+            all.extend_from_slice(&out[..n * no]);
+        }
+        parity.insert(bs.to_string(), json!(all));
+    }
+    std::fs::write(
+        parity_path,
+        serde_json::to_vec(&json!({"outputs_per_row": no, "batches": parity}))?,
+    )?;
+    println!("PARITY");
+    std::io::stdout().flush()?;
+
     let pre = pkg.manifest().preprocessing.clone();
     let batch_raw: Vec<Option<f64>> = (0..256)
         .flat_map(|i| rows[i % rows.len()].clone())
@@ -78,8 +104,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let prep = timed(5000, |i| {
         let mut x = [0.0f32; 64];
-        pre.apply(&rows[i % rows.len()], &mut x[..nf]).unwrap();
-        std::hint::black_box(&x);
+        pre.apply(black_box(&rows[i % rows.len()]), &mut x[..nf])
+            .unwrap();
+        black_box(&x);
     });
 
     // Core: same planned execution as `Predictor`, without preprocessing.
@@ -90,12 +117,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         p.predict_raw(&rows[i % rows.len()], 1, &mut out[..no])?;
     }
     let lat_core = timed(5000, |i| {
-        core.predict_into(&single_x[i % rows.len()], 1, &mut out[..no])
-            .unwrap()
+        core.predict_into(black_box(&single_x[i % rows.len()]), 1, &mut out[..no])
+            .unwrap();
+        black_box(&out[..no]);
     });
     let lat_e2e = timed(5000, |i| {
-        p.predict_raw(&rows[i % rows.len()], 1, &mut out[..no])
-            .unwrap()
+        p.predict_raw(black_box(&rows[i % rows.len()]), 1, &mut out[..no])
+            .unwrap();
+        black_box(&out[..no]);
     });
     for r in 0..256 {
         pre.apply(
@@ -104,16 +133,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .map_err(|e| e.to_string())?;
     }
-    let core_rps = rows_per_s(|| core.predict_into(&batch_x, 256, &mut out).unwrap());
-    let e2e_rps = rows_per_s(|| p.predict_raw(&batch_raw, 256, &mut out).unwrap());
-    let checksum: f64 = out.iter().map(|v| f64::from(*v)).sum();
+    let core_rps = rows_per_s(|| {
+        core.predict_into(black_box(&batch_x), 256, &mut out)
+            .unwrap();
+        black_box(&out);
+    });
+    let e2e_rps = rows_per_s(|| {
+        p.predict_raw(black_box(&batch_raw), 256, &mut out).unwrap();
+        black_box(&out);
+    });
     let q = |v: &[f64]| json!({"p50": pct(v, 0.5), "p95": pct(v, 0.95), "p99": pct(v, 0.99)});
     println!(
         "{}",
         json!({"runtime": "boundml", "threads": 1, "load_s": load_s, "preprocess_us_per_row": q(&prep),
             "latency_core_us": q(&lat_core), "latency_e2e_us": q(&lat_e2e),
             "batch256_core_rows_per_s": core_rps, "batch256_e2e_rows_per_s": e2e_rps,
-            "planned_tensor_bytes": planned, "checksum": checksum})
+            "planned_tensor_bytes": planned,
+            "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena"})
     );
     std::io::stdout().flush()?;
     let mut line = String::new();

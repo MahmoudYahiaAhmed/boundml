@@ -1,4 +1,4 @@
-"""Benchmark driver: BoundML vs PyTorch eager vs ONNX Runtime on the demo datasets.
+"""Benchmark driver: BoundML vs tract, PyTorch eager and ONNX Runtime on the demo datasets.
 
 Prerequisites (repository root):
     cargo build --release --workspace
@@ -8,18 +8,28 @@ Prerequisites (repository root):
 Run:
     python bench/run_bench.py [--runs 5]
 Writes docs/results/bench.json. Methodology: docs/benchmarks.md.
+
+Every inference worker first writes its outputs for every test row at batch sizes 1,
+7 and 64 (outside any timed region). The driver checks them elementwise against
+BoundML's batch-1 outputs (finite, |a - b| <= ATOL + RTOL * |b|) and aborts the whole
+benchmark, without writing results, on any mismatch. Worker exit codes are checked and
+every worker step has a timeout, after which the worker is killed and the run aborts.
+Every run's record (command, exit status, timings, memory, parity error) is kept.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import pathlib
 import platform
+import queue
 import shutil
 import statistics
 import subprocess
 import sys
+import threading
 import time
 
 import psutil
@@ -31,6 +41,14 @@ BASE = ROOT / "bench" / "baselines" / "target" / "release"
 OUT = ROOT / "out" / "bench"
 PY = sys.executable
 RUNS = int(sys.argv[sys.argv.index("--runs") + 1]) if "--runs" in sys.argv else 5
+ATOL, RTOL = 1e-5, 1e-4
+STEP_TIMEOUT_S = 300
+TRAIN_TIMEOUT_S = 900
+WINDOWS = os.name == "nt"
+INFER_MEMORY = ("peak_wset: OS-reported peak working set (high-water mark), read after all measurements"
+                if WINDOWS else "rss: resident set size read after all measurements (not a high-water mark)")
+TRAIN_MEMORY = ("peak_wset: OS-reported peak working set (high-water mark), polled every 5 ms"
+                if WINDOWS else "rss: maximum of resident set size sampled every 5 ms")
 
 DATASETS = {
     "breast_cancer": ("examples/breast_cancer/mlp.toml", "out/breast_cancer/mlp/ckpt", "datasets/breast_cancer/test.csv"),
@@ -38,26 +56,118 @@ DATASETS = {
 }
 
 
+class BenchError(RuntimeError):
+    pass
+
+
+def rel(arg: str) -> str:
+    """Command argument as recorded: repository-relative, interpreter as `python`."""
+    if arg == PY:
+        return "python"
+    try:
+        return pathlib.Path(arg).resolve().relative_to(ROOT).as_posix()
+    except (ValueError, OSError):
+        return arg
+
+
+def sha256(p: pathlib.Path) -> str:
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
 def peak_memory(p: psutil.Process) -> int:
     info = p.memory_info()
     return int(getattr(info, "peak_wset", 0) or getattr(info, "rss", 0))
 
 
-def run_worker(cmd: list[str]) -> dict:
-    t0 = time.perf_counter()
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, cwd=ROOT)
-    ps = psutil.Process(proc.pid)
-    first = proc.stdout.readline()
-    cold = time.perf_counter() - t0
-    if first.strip() != "FIRST":
-        raise RuntimeError(f"{cmd}: unexpected output {first!r}")
-    result = json.loads(proc.stdout.readline())
+class Worker:
+    """A benchmark worker whose stdout lines are read with a timeout."""
+
+    def __init__(self, cmd: list[str]):
+        self.cmd = cmd
+        self.t0 = time.perf_counter()
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     text=True, cwd=ROOT)
+        self.ps = psutil.Process(self.proc.pid)
+        self.lines: queue.Queue = queue.Queue()
+        self.stderr: list[str] = []
+        threading.Thread(target=self._pump, daemon=True).start()
+        threading.Thread(target=lambda: self.stderr.append(self.proc.stderr.read()), daemon=True).start()
+
+    def _pump(self) -> None:
+        for line in self.proc.stdout:
+            self.lines.put(line)
+        self.lines.put(None)
+
+    def fail(self, why: str) -> BenchError:
+        self.proc.kill()
+        self.proc.wait()
+        err = "".join(self.stderr).strip()[-2000:]
+        return BenchError(f"{' '.join(map(rel, self.cmd))}: {why} (exit {self.proc.returncode}); stderr: {err}")
+
+    def expect(self, what: str) -> str:
+        try:
+            line = self.lines.get(timeout=STEP_TIMEOUT_S)
+        except queue.Empty:
+            raise self.fail(f"timed out after {STEP_TIMEOUT_S} s waiting for {what}") from None
+        if line is None:
+            raise self.fail(f"exited before {what}")
+        return line.strip()
+
+    def finish(self) -> int:
+        self.proc.stdin.write("\n")
+        self.proc.stdin.flush()
+        try:
+            code = self.proc.wait(timeout=STEP_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            raise self.fail("did not exit after the results") from None
+        if code != 0:
+            raise self.fail("non-zero exit status")
+        return code
+
+
+def load_parity(path: pathlib.Path) -> dict[str, list[float]]:
+    doc = json.loads(path.read_text())
+    return {k: [float(v) for v in vals] for k, vals in doc["batches"].items()}
+
+
+def parity_error(got: dict[str, list[float]], ref: list[float], who: str) -> float:
+    """Largest |a - b| over every row and batch size; raise on any mismatch."""
+    worst = 0.0
+    for bs, vals in got.items():
+        if len(vals) != len(ref):
+            raise BenchError(f"parity {who} batch {bs}: {len(vals)} outputs, expected {len(ref)}")
+        for i, (a, b) in enumerate(zip(vals, ref)):
+            if not (a == a and abs(a) != float("inf")):
+                raise BenchError(f"parity {who} batch {bs}: non-finite output {a} at index {i}")
+            err = abs(a - b)
+            if not err <= ATOL + RTOL * abs(b):
+                raise BenchError(f"parity {who} batch {bs}: output {i} = {a}, reference {b} (|diff| {err:.3g})")
+            worst = max(worst, err)
+    return worst
+
+
+def run_inference(cmd: list[str], parity_path: pathlib.Path, ref: list[float] | None, who: str) -> tuple[dict, list[float]]:
+    parity_path.unlink(missing_ok=True)
+    w = Worker(cmd)
+    if w.expect("FIRST") != "FIRST":
+        raise w.fail("unexpected first line")
+    cold = time.perf_counter() - w.t0
+    if w.expect("PARITY") != "PARITY":
+        raise w.fail("unexpected parity line")
+    got = load_parity(parity_path)
+    ref = ref if ref is not None else got["1"]
+    try:
+        max_err = parity_error(got, ref, who)
+    except BenchError:
+        w.proc.kill()
+        raise
+    result = json.loads(w.expect("results"))
     result["cold_start_s"] = cold
-    result["peak_working_set_bytes"] = peak_memory(ps)
-    proc.stdin.write("\n")
-    proc.stdin.flush()
-    proc.wait(timeout=60)
-    return result
+    result["peak_memory_bytes"] = peak_memory(w.ps)
+    code = w.finish()
+    record = {"command": [rel(c) for c in cmd], "exit_status": code, "wall_s": time.perf_counter() - w.t0,
+              "parity_max_abs_error": max_err, "parity_outputs_checked": len(ref) * len(got), **result}
+    return record, ref
 
 
 def median_of(values: list):
@@ -70,20 +180,33 @@ def median_of(values: list):
     return first
 
 
-def median_runs(cmd: list[str]) -> dict:
-    runs = [run_worker(cmd) for _ in range(RUNS)]
-    out = median_of(runs)
-    out["runs"] = RUNS
+def spread_of(values: list):
+    """[min, max] of numbers, recursing into dicts; None for anything else."""
+    first = values[0]
+    if isinstance(first, dict):
+        return {k: spread_of([v[k] for v in values]) for k in first}
+    if isinstance(first, (int, float)) and not isinstance(first, bool):
+        return [min(values), max(values)]
+    return None
+
+
+def summarize(records: list[dict]) -> dict:
+    keys = [k for k in records[0] if k not in ("command", "exit_status")]
+    trimmed = [{k: r[k] for k in keys} for r in records]
+    out = median_of(trimmed)
+    out["spread"] = spread_of(trimmed)
+    out["command"] = records[0]["command"]
+    out["runs"] = records
     return out
 
 
-def python_startup() -> float:
+def python_startup() -> list[float]:
     times = []
     for _ in range(RUNS):
         t = time.perf_counter()
         subprocess.run([PY, "-I", "-c", "pass"], check=True)
         times.append(time.perf_counter() - t)
-    return statistics.median(times)
+    return times
 
 
 def export_onnx(pkg: pathlib.Path, path: pathlib.Path) -> None:
@@ -102,20 +225,26 @@ def dir_size(p: pathlib.Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
 
-def run_measured(cmd: list[str]) -> tuple[str, int]:
-    """Run to completion; return stdout and the peak working set seen while polling.
+def run_measured(cmd: list[str]) -> dict:
+    """Run to completion with a timeout; return a record with stdout, exit status and peak memory.
 
     stdout is drained by a thread so a large output cannot fill the pipe and block
     the child while we poll it.
     """
-    import threading
-
-    proc = psutil.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, cwd=ROOT)
+    t0 = time.perf_counter()
+    proc = psutil.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
     chunks: list[str] = []
+    errs: list[str] = []
     reader = threading.Thread(target=lambda: chunks.append(proc.stdout.read()), daemon=True)
+    ereader = threading.Thread(target=lambda: errs.append(proc.stderr.read()), daemon=True)
     reader.start()
+    ereader.start()
     peak = 0
     while proc.poll() is None:
+        if time.perf_counter() - t0 > TRAIN_TIMEOUT_S:
+            proc.kill()
+            proc.wait()
+            raise BenchError(f"{' '.join(map(rel, cmd))}: timed out after {TRAIN_TIMEOUT_S} s")
         try:
             peak = max(peak, peak_memory(proc))
         except psutil.Error:
@@ -123,44 +252,58 @@ def run_measured(cmd: list[str]) -> tuple[str, int]:
         time.sleep(0.005)
     proc.wait()
     reader.join()
+    ereader.join()
     if proc.returncode != 0:
-        raise RuntimeError(f"{cmd} exited {proc.returncode}")
-    return "".join(chunks), peak
+        raise BenchError(f"{' '.join(map(rel, cmd))}: exit {proc.returncode}; stderr: {''.join(errs).strip()[-2000:]}")
+    return {"command": [rel(c) for c in cmd], "exit_status": proc.returncode, "wall_s": time.perf_counter() - t0,
+            "stdout": "".join(chunks), "peak_memory_bytes": peak}
 
 
 def train_bench(cfg: str, test: str) -> dict:
     keys = ("boundml_cli", "boundml_core_in_memory", "burn_ndarray", "pytorch_default", "pytorch_1_thread")
     res: dict = {k: [] for k in keys}
+    control_hashes = set()
     for i in range(RUNS):
         ck = OUT / f"train-ck-{i}"
-        shutil.rmtree(ck, ignore_errors=True)
-        shutil.rmtree(pathlib.Path(str(ck) + ".prev"), ignore_errors=True)
-        out, peak = run_measured([str(REL / f"boundml{EXE}"), "--json", "train", cfg, "--checkpoint", str(ck), "--quiet"])
-        secs = json.loads(out)["result"]["seconds"]
-        ev = subprocess.run([str(REL / f"boundml{EXE}"), "--json", "evaluate", str(ck), "--data", test], capture_output=True, text=True, cwd=ROOT, check=True)
+        for p in (ck, pathlib.Path(str(ck) + ".prev")):
+            shutil.rmtree(p, ignore_errors=True)
+        rec = run_measured([str(REL / f"boundml{EXE}"), "--json", "train", cfg, "--checkpoint", str(ck), "--quiet"])
+        secs = json.loads(rec.pop("stdout"))["result"]["seconds"]
+        ev = subprocess.run([str(REL / f"boundml{EXE}"), "--json", "evaluate", str(ck), "--data", test],
+                            capture_output=True, text=True, cwd=ROOT, timeout=STEP_TIMEOUT_S)
+        if ev.returncode != 0:
+            raise BenchError(f"boundml evaluate exited {ev.returncode}: {ev.stderr.strip()[-2000:]}")
         metrics = json.loads(ev.stdout)["result"]["model"]
-        res["boundml_cli"].append({"train_seconds": secs, "peak_working_set_bytes": peak,
+        res["boundml_cli"].append({**rec, "train_seconds": secs,
                                    "test": {k: metrics[k] for k in ("rmse", "accuracy") if k in metrics}})
+        control = OUT / f"control-{i}.json"
         for key, cmd in (
-            ("boundml_core_in_memory", [str(REL / f"train_core{EXE}"), cfg, test]),
-            ("burn_ndarray", [str(BASE / f"train_burn{EXE}"), cfg, test]),
-            ("pytorch_default", [PY, "bench/py_train.py", cfg, test, "default"]),
-            ("pytorch_1_thread", [PY, "bench/py_train.py", cfg, test, "1"]),
+            ("boundml_core_in_memory", [str(REL / f"train_core{EXE}"), cfg, test, str(control)]),
+            ("burn_ndarray", [str(BASE / f"train_burn{EXE}"), cfg, test, str(control)]),
+            ("pytorch_default", [PY, "bench/py_train.py", cfg, test, "default", str(control)]),
+            ("pytorch_1_thread", [PY, "bench/py_train.py", cfg, test, "1", str(control)]),
         ):
-            out, peak = run_measured(cmd)
-            rec = json.loads(out.strip().splitlines()[-1])
-            rec["peak_working_set_bytes"] = peak
-            res[key].append(rec)
-        shutil.rmtree(ck, ignore_errors=True)
-        shutil.rmtree(pathlib.Path(str(ck) + ".prev"), ignore_errors=True)
-    summary = {}
+            rec = run_measured(cmd)
+            out = json.loads(rec.pop("stdout").strip().splitlines()[-1])
+            res[key].append({**rec, **out})
+        control_hashes.add(sha256(control))
+        for p in (ck, pathlib.Path(str(ck) + ".prev")):
+            shutil.rmtree(p, ignore_errors=True)
+    summary: dict = {"control_file_sha256": sorted(control_hashes)}
     for k, v in res.items():
         metric = next(iter(v[0]["test"]))
-        summary[k] = {"median_train_seconds": statistics.median(x["train_seconds"] for x in v), "metric": metric,
-                      "median_test_metric": statistics.median(x["test"][metric] for x in v),
+        secs = [x["train_seconds"] for x in v]
+        mem = [x["peak_memory_bytes"] for x in v]
+        summary[k] = {"median_train_seconds": statistics.median(secs), "train_seconds_range": [min(secs), max(secs)],
+                      "metric": metric, "median_test_metric": statistics.median(x["test"][metric] for x in v),
                       "all_test_metric": [x["test"][metric] for x in v],
-                      "median_peak_working_set_bytes": statistics.median(x["peak_working_set_bytes"] for x in v)}
+                      "median_peak_memory_bytes": statistics.median(mem), "peak_memory_range": [min(mem), max(mem)],
+                      "memory_metric": TRAIN_MEMORY, "command": v[0]["command"], "runs": v}
     return summary
+
+
+def git(*args: str) -> str:
+    return subprocess.run(["git", *args], capture_output=True, text=True, cwd=ROOT).stdout.strip()
 
 
 def main() -> None:
@@ -168,8 +311,12 @@ def main() -> None:
     import onnxruntime
     import torch
 
+    startup = python_startup()
     env = {
         "date": time.strftime("%Y-%m-%d"),
+        "command": f"python bench/run_bench.py --runs {RUNS}",
+        "git_commit": git("rev-parse", "HEAD"),
+        "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
         "cpu": platform.processor(),
         "logical_cpus": psutil.cpu_count(),
         "os": platform.platform(),
@@ -181,21 +328,39 @@ def main() -> None:
         "torch_threads_default": torch.get_num_threads(),
         "tract_onnx": "0.23.9 (bench/baselines/Cargo.lock), concrete-shape optimized plans, single thread",
         "burn": "0.21.0 ndarray backend (bench/baselines/Cargo.lock)",
-        "python_interpreter_startup_s": python_startup(),
+        "python_interpreter_startup_s": statistics.median(startup),
+        "python_interpreter_startup_runs_s": startup,
         "runs_per_measurement": RUNS,
+        "parity": {"batch_sizes": [1, 7, 64], "atol": ATOL, "rtol": RTOL, "reference": "BoundML, batch 1",
+                   "rule": "every output finite and |a - b| <= atol + rtol * |b|"},
+        "inference_memory_metric": INFER_MEMORY,
+        "training_memory_metric": TRAIN_MEMORY,
     }
     results: dict = {"environment": env, "datasets": {}}
     for name, (cfg, ck, test) in DATASETS.items():
         pkg = OUT / f"{name}.boundml"
-        subprocess.run([str(REL / f"boundml{EXE}"), "pack", ck, "--out", str(pkg)], check=True, cwd=ROOT, capture_output=True)
+        shutil.rmtree(pkg, ignore_errors=True)
+        subprocess.run([str(REL / f"boundml{EXE}"), "pack", ck, "--out", str(pkg)], check=True, cwd=ROOT,
+                       capture_output=True, timeout=STEP_TIMEOUT_S)
         onnx = OUT / f"{name}.onnx"
         export_onnx(pkg, onnx)
-        inf = {
-            "boundml": median_runs([str(REL / f"infer{EXE}"), str(pkg), test]),
-            "tract": median_runs([str(BASE / f"infer_tract{EXE}"), str(onnx), str(pkg), test]),
-            "pytorch_eager": median_runs([PY, "bench/py_infer.py", "torch", str(pkg), test]),
-            "onnxruntime": median_runs([PY, "bench/py_infer.py", "ort", str(pkg), test, str(onnx)]),
+        identity = {"package_manifest_sha256": sha256(pkg / "manifest.json"),
+                    "package_weights_sha256": sha256(pkg / "weights.safetensors"),
+                    "onnx_sha256": sha256(onnx), "test_csv_sha256": sha256(ROOT / test), "config": cfg}
+        parity = OUT / f"{name}.parity.json"
+        workers = {
+            "boundml": [str(REL / f"infer{EXE}"), str(pkg), test, str(parity)],
+            "tract": [str(BASE / f"infer_tract{EXE}"), str(onnx), str(pkg), test, str(parity)],
+            "pytorch_eager": [PY, "bench/py_infer.py", "torch", str(pkg), test, str(parity)],
+            "onnxruntime": [PY, "bench/py_infer.py", "ort", str(pkg), test, str(parity), str(onnx)],
         }
+        ref = None
+        records: dict = {k: [] for k in workers}
+        for _ in range(RUNS):
+            for key, cmd in workers.items():
+                rec, ref = run_inference(cmd, parity, ref, f"{name}/{key}")
+                records[key].append(rec)
+        inf = {k: {**summarize(v), "memory_metric": INFER_MEMORY} for k, v in records.items()}
         sizes = {
             "boundml_cli_binary_bytes": (REL / f"boundml{EXE}").stat().st_size,
             "boundml_package_bytes": dir_size(pkg),
@@ -203,8 +368,9 @@ def main() -> None:
             "torch_install_bytes": dir_size(pathlib.Path(torch.__file__).parent),
             "onnxruntime_install_bytes": dir_size(pathlib.Path(onnxruntime.__file__).parent),
         }
-        results["datasets"][name] = {"inference": inf, "sizes": sizes, "training": train_bench(cfg, test)}
-        print(json.dumps(results["datasets"][name], indent=1))
+        results["datasets"][name] = {"model_identity": identity, "inference": inf, "sizes": sizes,
+                                     "training": train_bench(cfg, test)}
+        print(f"{name}: done", flush=True)
     path = ROOT / "docs" / "results" / "bench.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(results, indent=1))
@@ -212,4 +378,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BenchError as e:
+        print(f"benchmark aborted, no results written: {e}", file=sys.stderr)
+        sys.exit(1)
