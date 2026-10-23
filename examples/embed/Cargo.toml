@@ -1,5 +1,6 @@
 [package]
-name = "embed"
+name = "boundml-embed-example"
+publish = false
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,3 +8,4 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+boundml-artifact = { version = "0.1.0", path = "../../crates/boundml-artifact" }

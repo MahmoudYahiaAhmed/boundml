@@ -246,6 +246,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "boundml-embed-example"
+version = "0.1.0"
+dependencies = [
+ "boundml-artifact",
+]
+
+[[package]]
 name = "boundml-train"
 version = "0.1.0"
 dependencies = [
@@ -418,10 +425,6 @@ dependencies = [
  "libc",
  "objc2",
 ]
-
-[[package]]
-name = "embed"
-version = "0.1.0"
 
 [[package]]
 name = "equivalent"
