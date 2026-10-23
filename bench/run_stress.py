@@ -27,8 +27,11 @@ def main() -> int:
     work.mkdir(parents=True)
     pkg = work / "model.boundml"
     boundml = ROOT / "target" / "release" / f"boundml{EXE}"
-    subprocess.run([str(boundml), "pack", "out/breast_cancer/mlp/ckpt", "--out", str(pkg)], cwd=ROOT, check=True, capture_output=True)
-    cmd = [str(ROOT / "target" / "release" / f"stress{EXE}"), str(pkg), "datasets/breast_cancer/test.csv", "examples/breast_cancer/mlp.toml", str(work), str(secs)]
+    # bench/stress.toml plans 4 sessions for the 4 concurrent prediction workers.
+    ck = work / "ckpt"
+    subprocess.run([str(boundml), "train", "bench/stress.toml", "--checkpoint", str(ck), "--quiet"], cwd=ROOT, check=True, capture_output=True)
+    subprocess.run([str(boundml), "pack", str(ck), "--out", str(pkg)], cwd=ROOT, check=True, capture_output=True)
+    cmd = [str(ROOT / "target" / "release" / f"stress{EXE}"), str(pkg), "datasets/breast_cancer/test.csv", "bench/stress.toml", str(work), str(secs)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, cwd=ROOT)
     ps = psutil.Process(proc.pid)
     samples, progress = [], []

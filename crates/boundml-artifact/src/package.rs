@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub const MANIFEST_FILE: &str = "manifest.json";
 pub const MANIFEST_HASH_FILE: &str = "MANIFEST.sha256";
@@ -47,11 +48,36 @@ pub struct PackageSpec {
     pub test_rtol: f32,
 }
 
-/// A loaded, validated package. Immutable; share with `Arc`.
-#[derive(Debug)]
+/// A loaded, validated package. Immutable; share with `Arc` (cloning is cheap and
+/// clones share the same session allowance).
+///
+/// Session accounting: every [`Predictor`] created from this package (directly,
+/// through [`Package::predictor`], or internally by [`Package::verify`]) holds one of
+/// the `bounds.sessions` reservations until it is dropped. The allowance belongs to
+/// this loaded instance: loading the same directory again yields an independent
+/// allowance, and lower-level `boundml_core` sessions are not counted.
+#[derive(Debug, Clone)]
 pub struct Package {
+    inner: Arc<Inner>,
+}
+
+#[derive(Debug)]
+struct Inner {
     manifest: Manifest,
     model: Arc<Model>,
+    sessions_in_use: AtomicUsize,
+}
+
+/// One reserved session of a package; released on drop.
+#[derive(Debug)]
+pub(crate) struct SessionGuard {
+    inner: Arc<Inner>,
+}
+
+impl Drop for SessionGuard {
+    fn drop(&mut self) {
+        self.inner.sessions_in_use.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -65,11 +91,58 @@ pub struct VerifyReport {
 }
 
 impl Package {
+    fn assemble(manifest: Manifest, model: Arc<Model>) -> Package {
+        Package {
+            inner: Arc::new(Inner {
+                manifest,
+                model,
+                sessions_in_use: AtomicUsize::new(0),
+            }),
+        }
+    }
+
+    /// Take back the parts of a package that no predictor is using.
+    fn into_parts(self) -> (Manifest, Arc<Model>) {
+        match Arc::try_unwrap(self.inner) {
+            Ok(i) => (i.manifest, i.model),
+            Err(shared) => (shared.manifest.clone(), Arc::clone(&shared.model)),
+        }
+    }
+
     pub fn manifest(&self) -> &Manifest {
-        &self.manifest
+        &self.inner.manifest
     }
     pub fn model(&self) -> &Arc<Model> {
-        &self.model
+        &self.inner.model
+    }
+
+    /// Sessions currently reserved by live predictors of this loaded package.
+    pub fn sessions_in_use(&self) -> usize {
+        self.inner.sessions_in_use.load(Ordering::Acquire)
+    }
+
+    /// Reserve one of the declared sessions, or fail with `BML-A010`.
+    pub(crate) fn reserve_session(&self) -> Result<SessionGuard> {
+        let limit = self.inner.manifest.bounds.sessions;
+        let mut cur = self.inner.sessions_in_use.load(Ordering::Acquire);
+        loop {
+            if cur >= limit {
+                return Err(ArtifactError::SessionsExhausted { limit });
+            }
+            match self.inner.sessions_in_use.compare_exchange_weak(
+                cur,
+                cur + 1,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => {
+                    return Ok(SessionGuard {
+                        inner: Arc::clone(&self.inner),
+                    });
+                }
+                Err(actual) => cur = actual,
+            }
+        }
     }
 
     /// Validate `spec`, compute test-vector outputs if needed and write atomically.
@@ -106,7 +179,7 @@ impl Package {
             test_vectors: None,
         };
         check_consistency(&manifest, &model)?;
-        let pkg = Package { manifest, model };
+        let pkg = Package::assemble(manifest, model);
         let vectors = if spec.test_inputs.is_empty() {
             None
         } else {
@@ -122,14 +195,11 @@ impl Package {
                 rtol: spec.test_rtol,
             })
         };
-        let Package {
-            mut manifest,
-            model,
-        } = pkg;
+        let (mut manifest, model) = pkg.into_parts();
         manifest.test_vectors = vectors;
         check_test_vectors(&manifest)?;
         // Self-test in memory first so a failing package is never written.
-        let pkg = Package { manifest, model };
+        let pkg = Package::assemble(manifest, model);
         let pre_write = pkg.verify()?;
         if !pre_write.passed {
             return Err(ArtifactError::SelfTest(format!(
@@ -137,10 +207,7 @@ impl Package {
                 pre_write.failure.as_deref().unwrap_or("unknown failure")
             )));
         }
-        let Package {
-            mut manifest,
-            model,
-        } = pkg;
+        let (mut manifest, model) = pkg.into_parts();
 
         let g = model.graph();
         let named: Vec<(String, [usize; 2], &[f32])> = (0..g.params().len())
@@ -243,15 +310,15 @@ impl Package {
             other => other,
         })?;
         check_test_vectors(&manifest)?;
-        Ok(Package { manifest, model })
+        Ok(Package::assemble(manifest, model))
     }
 
     /// Memory report for `sessions` sessions at the package's `max_batch`.
     pub fn memory_report(&self, sessions: usize) -> Result<MemoryReport> {
-        Ok(self.model.inference_report(
-            self.manifest.bounds.max_batch,
+        Ok(self.inner.model.inference_report(
+            self.inner.manifest.bounds.max_batch,
             sessions,
-            self.manifest.bounds.planner,
+            self.inner.manifest.bounds.planner,
         )?)
     }
 
@@ -259,18 +326,16 @@ impl Package {
         Predictor::new(Arc::clone(self), max_batch)
     }
 
+    /// Evaluates through a predictor of *this* package, so it takes (and releases) one
+    /// of the package's own session reservations rather than a fresh allowance.
     fn compute_outputs(&self, inputs: &[Vec<Option<f64>>]) -> Result<Vec<Vec<f32>>> {
-        let tmp = Arc::new(Package {
-            manifest: self.manifest.clone(),
-            model: Arc::clone(&self.model),
-        });
-        let mut p = Predictor::new(tmp, 1)?;
+        let mut p = Predictor::from_package(self.clone(), 1)?;
         inputs.iter().map(|row| p.predict_one(row)).collect()
     }
 
     /// Run the bundled test vectors through the full preprocessing + model path.
     pub fn verify(&self) -> Result<VerifyReport> {
-        let Some(tv) = &self.manifest.test_vectors else {
+        let Some(tv) = &self.inner.manifest.test_vectors else {
             return Ok(VerifyReport {
                 vectors: 0,
                 max_abs_error: 0.0,
@@ -280,6 +345,8 @@ impl Package {
         };
         let got = match self.compute_outputs(&tv.inputs) {
             Ok(g) => g,
+            // No free session: that says nothing about the package's correctness.
+            Err(e @ ArtifactError::SessionsExhausted { .. }) => return Err(e),
             // A vector the model cannot evaluate (e.g. its output overflows to inf/NaN)
             // is a failed self-test, never a pass.
             Err(e) => {

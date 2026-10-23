@@ -106,11 +106,24 @@ allocated:
    (`plan::tests::reuse_planner_never_overlaps_live_buffers`) checks random interval
    sets for no overlap and for capacity at or above peak live bytes.
 
+**Enforcement scope.** For packages, the declared `bounds.sessions` is enforced:
+every `Predictor` of a loaded `Package` (including the one `verify` uses internally)
+holds a reservation until it is dropped, and the session past the allowance fails
+with `BML-A010` *before* its arena is allocated. The allowance belongs to one loaded
+`Package` instance (and its cheap clones); loading the same directory twice gives two
+independent allowances. Lower-level `boundml_core` APIs (`InferenceSession`,
+`Executor`) are not accounted: callers using them directly manage their own sessions.
+`Predictor` preprocesses raw values directly into the arena's planned input buffer, so
+it owns no tensor storage outside the plan.
+
 `MemoryReport` lists, for a configuration (`max_batch`, `sessions`, optimizer):
 shared weights, inputs, outputs, activations, values retained for backward, activation
 gradients, parameter gradients, optimizer state, kernel scratch, alignment padding,
 the sum of buffers without reuse, and arena capacity per session after reuse.
-`total_planned_bytes = weights + sessions × arena + optimizer state`.
+`total_planned_bytes = weights + sessions × arena + optimizer state`, plus, for
+training, the validation executor's arena and the training loop's batch/evaluation
+staging buffers. Data-loader buffers (the training shuffle buffer) are reported as
+`data_loader_bytes` but not budgeted.
 `check_budget` rejects a plan over budget with `BML-C005`, giving requested bytes,
 available bytes and the largest contributors. This happens in `Executor::from_plan`'s
 callers *before* `vec![0.0; arena]` runs.

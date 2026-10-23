@@ -20,7 +20,7 @@ pub mod exit {
 pub fn exit_code_for(message: &str) -> i32 {
     let code = serve::code_of(message);
     match code.as_str() {
-        "BML-C005" => exit::BUDGET,
+        "BML-C005" | "BML-A010" => exit::BUDGET,
         "BML-A002" | "BML-A003" | "BML-A004" | "BML-A005" | "BML-A006" => exit::ARTIFACT,
         "BML-A007" => exit::CHECK_FAILED,
         c if c.starts_with("BML-C") || c.starts_with("BML-D") || c.starts_with("BML-T") => {

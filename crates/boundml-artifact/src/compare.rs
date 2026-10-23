@@ -271,9 +271,11 @@ pub fn compare(
         );
     }
     if b.bounds.sessions < a.bounds.sessions {
+        // Sessions are enforced: an application or server that runs as many
+        // predictors as the current package allows would be refused (BML-A010).
         add(
             "bounds",
-            Severity::Warning,
+            Severity::Breaking,
             format!(
                 "planned sessions reduced {} -> {}; deployments running more workers would be refused",
                 a.bounds.sessions, b.bounds.sessions

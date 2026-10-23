@@ -4,6 +4,31 @@ use crate::schema::{MissingPolicy, Schema};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+/// Why [`Preprocessor::apply`] rejected a row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ApplyError {
+    /// Feature `i` is missing under the `reject` policy, or overflows f32.
+    Feature(usize),
+    /// `raw` or `out` does not have exactly `expected` (= number of features) values.
+    Length {
+        expected: usize,
+        raw: usize,
+        out: usize,
+    },
+}
+
+impl std::fmt::Display for ApplyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApplyError::Feature(i) => write!(f, "feature {i} is missing or out of range"),
+            ApplyError::Length { expected, raw, out } => write!(
+                f,
+                "preprocessing needs {expected} values per row; got {raw} inputs and {out} output slots"
+            ),
+        }
+    }
+}
+
 /// Standard deviation below which a column is treated as constant.
 const CONSTANT_EPS: f64 = 1e-12;
 
@@ -140,15 +165,26 @@ impl Preprocessor {
         self.features.len()
     }
 
-    /// Transform one row in schema order into `out`. Allocation-free.
-    /// `Err(i)`: feature `i` is missing under the reject policy or overflows f32.
-    pub fn apply(&self, raw: &[Option<f64>], out: &mut [f32]) -> std::result::Result<(), usize> {
-        debug_assert_eq!(raw.len(), self.features.len());
+    /// Transform one row in schema order into `out`. Allocation-free. Both `raw` and
+    /// `out` must be exactly `n_features` long (checked in every build mode).
+    pub fn apply(
+        &self,
+        raw: &[Option<f64>],
+        out: &mut [f32],
+    ) -> std::result::Result<(), ApplyError> {
+        let n = self.features.len();
+        if raw.len() != n || out.len() != n {
+            return Err(ApplyError::Length {
+                expected: n,
+                raw: raw.len(),
+                out: out.len(),
+            });
+        }
         for (i, (v, f)) in raw.iter().zip(&self.features).enumerate() {
             let v = match (v, self.missing) {
                 (Some(v), _) => *v,
                 (None, MissingPolicy::ImputeMean) => f.mean,
-                (None, MissingPolicy::Reject) => return Err(i),
+                (None, MissingPolicy::Reject) => return Err(ApplyError::Feature(i)),
             };
             let t = match self.normalize {
                 Normalize::Standardize => (v - f.mean) / f.std,
@@ -156,7 +192,7 @@ impl Preprocessor {
             };
             out[i] = t as f32;
             if !out[i].is_finite() {
-                return Err(i);
+                return Err(ApplyError::Feature(i));
             }
         }
         Ok(())

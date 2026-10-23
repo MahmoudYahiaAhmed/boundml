@@ -65,10 +65,20 @@ pub fn report_text(r: &MemoryReport) -> String {
         ("alignment padding", r.alignment_padding_bytes),
         ("sum of buffers (no reuse)", r.sum_of_buffers_bytes),
         ("arena per session (after reuse)", r.arena_bytes_per_session),
+        ("validation arena (training)", r.validation_arena_bytes),
+        ("batch staging buffers (training)", r.staging_bytes),
         ("TOTAL planned tensor bytes", r.total_planned_bytes),
     ];
     for (k, v) in rows {
         let _ = writeln!(t, "  {k:<34} {:>12}  ({v} B)", mib(v));
+    }
+    if r.data_loader_bytes > 0 {
+        let _ = writeln!(
+            t,
+            "  data-loader buffers (not budgeted)  {:>12}  ({} B; set by data.shuffle_buffer)",
+            mib(r.data_loader_bytes),
+            r.data_loader_bytes
+        );
     }
     let _ = writeln!(t, "  not covered: {}", r.excluded.join("; "));
     t

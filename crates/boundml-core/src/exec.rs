@@ -123,6 +123,30 @@ impl Executor {
 
     /// Run the inference plan and copy the output into `out` (`b * output_cols`).
     pub fn infer(&mut self, params: &[f32], x: &[f32], b: usize, out: &mut [f32]) -> Result<()> {
+        self.infer_staged(params, b, out, |input| {
+            if x.len() != input.len() {
+                return Err(CoreError::Length {
+                    what: "input",
+                    expected: input.len(),
+                    got: x.len(),
+                });
+            }
+            input.copy_from_slice(x);
+            Ok(())
+        })
+    }
+
+    /// Like [`Executor::infer`], but `stage` writes the `b` input rows directly into
+    /// the arena's planned input buffer (`b * input_cols` values), so callers that
+    /// transform raw values (e.g. preprocessing) need no separate staging copy.
+    /// The staged values are checked for finiteness before execution.
+    pub fn infer_staged(
+        &mut self,
+        params: &[f32],
+        b: usize,
+        out: &mut [f32],
+        stage: impl FnOnce(&mut [f32]) -> Result<()>,
+    ) -> Result<()> {
         if self.plan.mode != Mode::Inference {
             return Err(CoreError::Graph(
                 "executor was planned for training, not inference".into(),
@@ -139,7 +163,11 @@ impl Executor {
                 got: out.len(),
             });
         }
-        self.load(self.graph.input(), x, b, "input")?;
+        let input = self.value_range(self.graph.input(), b);
+        stage(&mut self.arena[input.clone()])?;
+        if self.arena[input].iter().any(|v| !v.is_finite()) {
+            return Err(CoreError::NonFinite("input"));
+        }
         self.forward(params, b)?;
         let r = self.value_range(output, b);
         // Fail closed: finite weights and inputs can still overflow to inf/NaN. `out`

@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut single_x: Vec<Vec<f32>> = Vec::new();
     for row in &rows {
         let mut x = vec![0.0f32; nf];
-        pre.apply(row, &mut x).map_err(|i| format!("feature {i}"))?;
+        pre.apply(row, &mut x).map_err(|e| e.to_string())?;
         single_x.push(x);
     }
     let prep = timed(5000, |i| {
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &batch_raw[r * nf..(r + 1) * nf],
             &mut batch_x[r * nf..(r + 1) * nf],
         )
-        .map_err(|i| format!("feature {i}"))?;
+        .map_err(|e| e.to_string())?;
     }
     let core_rps = rows_per_s(|| core.predict_into(&batch_x, 256, &mut out).unwrap());
     let e2e_rps = rows_per_s(|| p.predict_raw(&batch_raw, 256, &mut out).unwrap());

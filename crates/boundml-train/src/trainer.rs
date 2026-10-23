@@ -62,8 +62,53 @@ pub fn plan_training(cfg: &TrainConfig) -> Result<(Graph, Plan, MemoryReport)> {
         cfg.training.batch_size,
         cfg.training.planner,
     )?;
-    let report = plan.report(&graph, 1, cfg.training.optimizer.state_slots());
+    let validation = validation_plan(cfg, &graph)?;
+    let report = plan
+        .report(&graph, 1, cfg.training.optimizer.state_slots())
+        .with_training_extras(
+            validation.as_ref().map_or(0, Plan::arena_bytes),
+            staging_bytes(cfg),
+            data_loader_bytes(cfg),
+        );
     Ok((graph, plan, report))
+}
+
+/// The separate inference plan used to evaluate the validation file each epoch.
+fn validation_plan(cfg: &TrainConfig, graph: &Graph) -> Result<Option<Plan>> {
+    match cfg.data.valid {
+        Some(_) => Ok(Some(Plan::new(
+            graph,
+            Mode::Inference,
+            cfg.training.batch_size,
+            cfg.training.planner,
+        )?)),
+        None => Ok(None),
+    }
+}
+
+/// Tensor staging buffers owned by the training loop alongside the arenas: the
+/// batch buffers (features f32, labels f32, line numbers u64) and, with a
+/// validation file, the evaluation buffers (the same plus outputs).
+pub fn staging_bytes(cfg: &TrainConfig) -> u64 {
+    let bs = cfg.training.batch_size as u64;
+    let nf = cfg.data.features.len() as u64;
+    let no = cfg.schema().task().output_cols() as u64;
+    let batch = bs * (nf * 4 + 4 + 8);
+    let eval = if cfg.data.valid.is_some() {
+        bs * (nf * 4 + 4 + 8 + no * 4)
+    } else {
+        0
+    };
+    batch + eval
+}
+
+/// Data-loader buffers (reported, not budgeted): the training shuffle buffer of
+/// `shuffle_buffer` preprocessed rows, plus one row for the validation reader.
+pub fn data_loader_bytes(cfg: &TrainConfig) -> u64 {
+    let nf = cfg.data.features.len() as u64;
+    let row = nf * 4 + 4 + 8;
+    let valid = if cfg.data.valid.is_some() { row } else { 0 };
+    cfg.data.shuffle_buffer as u64 * row + valid
 }
 
 /// Inference-mode memory report for the deploy settings.
@@ -218,15 +263,9 @@ pub fn train(cfg: &TrainConfig, base: &Path, opts: TrainOptions<'_>) -> Result<T
     let bs = cfg.training.batch_size;
     let nf = run.schema.features.len();
     let (mut x, mut y, mut lines) = (vec![0.0f32; bs * nf], vec![0.0f32; bs], vec![0u64; bs]);
-    let mut valid_exec = match &run.valid_path {
-        Some(_) => Some(Executor::new(
-            Arc::clone(&graph),
-            Mode::Inference,
-            bs,
-            cfg.training.planner,
-        )?),
-        None => None,
-    };
+    // The validation arena is part of the budgeted plan (see `plan_training`).
+    let mut valid_exec =
+        validation_plan(cfg, &graph)?.map(|p| Executor::from_plan(Arc::clone(&graph), p));
 
     while progress.epoch < cfg.training.epochs {
         let mut reader = match &progress.reader {

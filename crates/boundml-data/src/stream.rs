@@ -153,7 +153,14 @@ impl BatchReader {
             return Ok(false);
         }
         let dst = &mut self.buf_x[slot * self.nf..(slot + 1) * self.nf];
-        if let Err(i) = self.pre.apply(&self.row.features, dst) {
+        if let Err(e) = self.pre.apply(&self.row.features, dst) {
+            let i = match e {
+                crate::preprocess::ApplyError::Feature(i) => i,
+                // The reader sizes rows from the same schema; this is an internal bug.
+                e @ crate::preprocess::ApplyError::Length { .. } => {
+                    return Err(DataError::Preprocess(e.to_string()));
+                }
+            };
             let column = self.pre.features[i].name.clone();
             return Err(match self.row.features[i] {
                 None => DataError::Missing {

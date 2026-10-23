@@ -42,8 +42,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         p.predict_raw(&rows[..b * nf], b, &mut o[..b * p.output_cols()])?;
         Arc::new(o[..b * p.output_cols()].to_vec())
     };
-    // 4 concurrent sessions sharing one package; each checks results never drift.
-    let workers: Vec<_> = (0..4)
+    // Concurrent sessions sharing one package; each checks results never drift.
+    // One worker per planned session: the package's allowance is enforced, so the
+    // reference predictor above was dropped before the workers start.
+    let sessions = pkg.manifest().bounds.sessions;
+    let workers: Vec<_> = (0..sessions)
         .map(|_| {
             let (pkg, rows, stop, count, reference) = (
                 Arc::clone(&pkg),

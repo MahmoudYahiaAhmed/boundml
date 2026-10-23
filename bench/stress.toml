@@ -1,0 +1,31 @@
+# Stress-test config: the breast-cancer MLP with 4 planned sessions (bench/run_stress.py runs 4 concurrent predictors).
+# The split CSVs ship with the repository and the release archive (datasets/breast_cancer/).
+# Run from the repository or archive root. To rebuild them from the UCI source, see datasets/README.md.
+name = "stress-breast-cancer-mlp"
+seed = 2026
+
+[data]
+train = "../datasets/breast_cancer/train.csv"
+valid = "../datasets/breast_cancer/valid.csv"
+features = ["radius_mean", "texture_mean", "perimeter_mean", "area_mean", "smoothness_mean", "compactness_mean", "concavity_mean", "concave_points_mean", "symmetry_mean", "fractal_dimension_mean", "radius_se", "texture_se", "perimeter_se", "area_se", "smoothness_se", "compactness_se", "concavity_se", "concave_points_se", "symmetry_se", "fractal_dimension_se", "radius_worst", "texture_worst", "perimeter_worst", "area_worst", "smoothness_worst", "compactness_worst", "concavity_worst", "concave_points_worst", "symmetry_worst", "fractal_dimension_worst"]
+label = "diagnosis"
+task = "classification"
+classes = ["B", "M"]
+missing = "reject"
+extra_columns = "ignore"   # the 'id' column is ignored
+shuffle_buffer = 512
+
+[model]
+hidden = [16]
+activation = "relu"
+
+[training]
+epochs = 80
+batch_size = 32
+optimizer = { kind = "adamw", lr = 0.003, weight_decay = 0.001 }
+tensor_budget = "1MiB"
+
+[deploy]
+max_batch = 256
+sessions = 4
+tensor_budget = "1MiB"

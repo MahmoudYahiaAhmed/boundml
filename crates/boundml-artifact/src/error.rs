@@ -35,6 +35,10 @@ pub enum ArtifactError {
     SelfTest(String),
     #[error("BML-A008 invalid input row {row}: {message}")]
     Input { row: usize, message: String },
+    #[error(
+        "BML-A010 all {limit} planned session(s) of this package are in use; drop a predictor or repack with a larger deploy.sessions (the tensor budget covers exactly that many)"
+    )]
+    SessionsExhausted { limit: usize },
     #[error("BML-A009 invalid option: {0}")]
     InvalidOption(String),
     #[error(transparent)]

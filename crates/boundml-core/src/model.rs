@@ -241,4 +241,16 @@ impl InferenceSession {
     pub fn predict_into(&mut self, x: &[f32], b: usize, out: &mut [f32]) -> Result<()> {
         self.exec.infer(self.model.weights(), x, b, out)
     }
+
+    /// Predict with `stage` writing the `b * input_cols` input values straight into
+    /// this session's arena (no extra staging buffer). Allocation-free.
+    pub fn predict_staged(
+        &mut self,
+        b: usize,
+        out: &mut [f32],
+        stage: impl FnOnce(&mut [f32]) -> Result<()>,
+    ) -> Result<()> {
+        let weights = Arc::clone(&self.model);
+        self.exec.infer_staged(weights.weights(), b, out, stage)
+    }
 }

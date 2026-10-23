@@ -143,11 +143,14 @@ pub fn evaluate(path: &Path, data: &Path) -> Result<Evaluation> {
         &mut |raw, n, out| {
             for r in 0..n {
                 pre.apply(&raw[r * nf..(r + 1) * nf], &mut x[r * nf..(r + 1) * nf])
-                    .map_err(|i| {
-                        TrainError::Config(format!(
-                            "row {r}: feature '{}' missing or out of range",
-                            pre.features[i].name
-                        ))
+                    .map_err(|e| {
+                        TrainError::Config(match e {
+                            boundml_data::ApplyError::Feature(i) => format!(
+                                "row {r}: feature '{}' missing or out of range",
+                                pre.features[i].name
+                            ),
+                            e => format!("row {r}: {e}"),
+                        })
                     })?;
             }
             session.predict_into(&x[..n * nf], n, out)?;

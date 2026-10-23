@@ -339,6 +339,9 @@ impl Plan {
             sum_of_buffers_bytes: unshared,
             arena_bytes_per_session: arena,
             total_planned_bytes: total,
+            validation_arena_bytes: 0,
+            staging_bytes: 0,
+            data_loader_bytes: 0,
             largest_buffers: largest,
             excluded: EXCLUDED.iter().map(|s| s.to_string()).collect(),
         }
@@ -377,11 +380,41 @@ pub struct MemoryReport {
     pub arena_bytes_per_session: u64,
     /// `shared weights + sessions * arena + optimizer state`.
     pub total_planned_bytes: u64,
+    /// Training only: arena of the separate validation inference executor.
+    #[serde(default)]
+    pub validation_arena_bytes: u64,
+    /// Caller-owned tensor staging buffers that live alongside the arena (training
+    /// batch buffers, evaluation buffers). Counted in `total_planned_bytes`.
+    #[serde(default)]
+    pub staging_bytes: u64,
+    /// Data-loader buffers (e.g. the training shuffle buffer): reported for
+    /// information, **not** counted in `total_planned_bytes` or the budget.
+    #[serde(default)]
+    pub data_loader_bytes: u64,
     pub largest_buffers: Vec<Contributor>,
     pub excluded: Vec<String>,
 }
 
 impl MemoryReport {
+    /// Add training-time storage that lives alongside the training arena: the
+    /// validation executor's arena and caller staging buffers count towards the
+    /// total and the budget; data-loader buffers are only reported.
+    pub fn with_training_extras(
+        mut self,
+        validation_arena: u64,
+        staging: u64,
+        data_loader: u64,
+    ) -> Self {
+        self.validation_arena_bytes = validation_arena;
+        self.staging_bytes = staging;
+        self.data_loader_bytes = data_loader;
+        self.total_planned_bytes = self
+            .total_planned_bytes
+            .saturating_add(validation_arena)
+            .saturating_add(staging);
+        self
+    }
+
     /// Reject the plan if its planned tensor storage exceeds `budget` bytes.
     pub fn check_budget(&self, budget: u64) -> Result<()> {
         if self.total_planned_bytes <= budget {
@@ -401,6 +434,18 @@ impl MemoryReport {
             contributors.push(Contributor {
                 name: "optimizer state".into(),
                 bytes: self.optimizer_state_bytes,
+            });
+        }
+        if self.validation_arena_bytes > 0 {
+            contributors.push(Contributor {
+                name: "validation arena".into(),
+                bytes: self.validation_arena_bytes,
+            });
+        }
+        if self.staging_bytes > 0 {
+            contributors.push(Contributor {
+                name: "batch staging buffers".into(),
+                bytes: self.staging_bytes,
             });
         }
         contributors.sort_by(|a, b| b.bytes.cmp(&a.bytes));

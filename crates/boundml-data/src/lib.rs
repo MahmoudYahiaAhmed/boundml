@@ -21,7 +21,7 @@ mod stream;
 
 pub use csvsrc::{CsvSource, MAX_COLUMNS, MAX_RECORD_BYTES, RawRow};
 pub use error::{DataError, Result};
-pub use preprocess::{FeatureStats, Normalize, Preprocessor};
+pub use preprocess::{ApplyError, FeatureStats, Normalize, Preprocessor};
 pub use reserve::{ReservedFile, same_file};
 pub use schema::{ExtraColumns, LabelKind, MissingPolicy, Schema};
 pub use split::{SplitCounts, split_csv};
