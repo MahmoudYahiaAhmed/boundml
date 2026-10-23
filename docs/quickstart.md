@@ -8,7 +8,7 @@ Two paths, both from a release archive or a source install (see [install.md](ins
 Outputs below are copied from a real run (`assets/demo-transcript.txt`). Timings
 differ between machines; metrics are deterministic for a given binary and platform.
 
-Measured time to the first prediction with a prebuilt Windows archive: **0.02 s** to extract the archive, then **0.22 s** for `init`, `train`, `pack` and `predict` together (train 0.17 s), measured by `scripts/release.py` on the machine described in [benchmarks.md](benchmarks.md). Downloading the archive (about 1.6 MB) and reading these instructions take longer than running them. A source build (`cargo install`) adds the compile time measured in [install.md](install.md).
+Measured time to the first prediction with a prebuilt Windows archive: **0.02 s** to extract the archive with Python's `zipfile` (about 0.5 s with PowerShell's `Expand-Archive`), then **0.22 s** for `init`, `train`, `pack` and `predict` together (train 0.17 s), measured by `scripts/release.py` on the machine described in [benchmarks.md](benchmarks.md). Downloading the archive (about 1.6 MB) and reading these instructions take longer than running them. A source build (`cargo install`) adds the compile time measured in [install.md](install.md).
 
 ## Path 1 — CLI
 
@@ -17,6 +17,11 @@ Measured time to the first prediction with a prebuilt Windows archive: **0.02 s*
 ```bash
 boundml init demo
 ```
+
+(If you already ran the README quickstart, `demo/` exists and `init` refuses to
+overwrite it with `BML-T001`. Use another directory name, for example
+`boundml init demo2`, and adjust the paths below.) In PowerShell, write `.\boundml`
+when running from the extracted archive folder.
 
 This writes `demo/model.toml` and three CSV files (`train`, `valid`, `test`)
 generated deterministically by `boundml` itself. The data is synthetic: electrical
@@ -96,9 +101,24 @@ and planned memory.
 boundml serve demo/model.boundml
 ```
 
+```text
+serving 'example-regression' on http://127.0.0.1:8080 (workers 2, queue 16, max rows 128, timeout 5s); Ctrl-C to stop
+```
+
+The server keeps running in this terminal. Send a request from a **second** terminal.
+bash / zsh / Git Bash:
+
 ```bash
 curl -s -X POST localhost:8080/v1/predict -H "content-type: application/json" -d '{"rows":[{"temperature":20,"humidity":50,"load":0.5}]}'
 ```
+
+PowerShell, where `curl` is an alias for `Invoke-WebRequest`:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/v1/predict -ContentType "application/json" -Body '{"rows":[{"temperature":20,"humidity":50,"load":0.5}]}' | ConvertTo-Json -Depth 5 -Compress
+```
+
+Response:
 
 ```text
 {"model":"example-regression","output_names":["power"],"outputs":[[4.8455453]]}
@@ -137,8 +157,18 @@ boundml plan demo/model.toml --mode infer --tensor-budget 64KiB
   within budget of 64.0 KiB (65536 B)
 ```
 
-A schema error looks like this. Copy the test file with the `humidity` column renamed
-(for example to `humidity_pct`) as `demo/data/renamed.csv`, then predict:
+A schema error looks like this. Make a copy of the test file whose `humidity` column is
+renamed to `humidity_pct` (bash, then PowerShell):
+
+```bash
+sed '1s/humidity/humidity_pct/' demo/data/test.csv > demo/data/renamed.csv
+```
+
+```powershell
+$c = Get-Content demo\data\test.csv; $c[0] = $c[0] -replace 'humidity', 'humidity_pct'; $c | Set-Content demo\data\renamed.csv
+```
+
+Then predict:
 
 ```bash
 boundml predict demo/model.boundml --data demo/data/renamed.csv --out demo/p2.csv
@@ -224,9 +254,25 @@ For several threads, create one `Predictor` per thread from the same
 [walkthroughs.md](walkthroughs.md) runs the same workflow on the UCI Breast Cancer
 (classification) and Wine Quality (regression) datasets. It reports every metric
 against constant and linear baselines, including the cases where the MLP does not
-win. The release archive includes the breast-cancer data and configs:
+win. The release archive includes the breast-cancer data and configs. Run these from
+the **extracted archive folder** (or a repository checkout), because the config refers
+to `../../datasets/` relative to itself:
 
 ```bash
 boundml train examples/breast_cancer/linear.toml --checkpoint bc/ckpt --quiet
 boundml evaluate bc/ckpt --data datasets/breast_cancer/test.csv
 ```
+
+```text
+metrics on datasets/breast_cancer/test.csv:
+  accuracy       0.9597   (constant baseline 0.5806)
+  f1             0.9495   (constant baseline 0.0000)
+  log_loss       0.1379   (constant baseline 0.6870)
+  precision      1.0000   (constant baseline 0.0000)
+  recall         0.9038   (constant baseline 0.0000)
+  rows         124.0000   (constant baseline 124.0000)
+```
+
+This is logistic regression on 30 measurements of breast-tissue images, predicting
+`diagnosis` (`M` = malignant is the positive class). It demonstrates the workflow on
+real data; it is not a medical tool.

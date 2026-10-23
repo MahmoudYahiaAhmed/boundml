@@ -4,22 +4,22 @@
  "steps": [
   {
    "step": "extract archive",
-   "seconds": 0.019727699997019954,
+   "seconds": 0.02006420000543585,
    "exit": 0
   },
   {
    "step": "version",
    "command": "boundml --version",
-   "seconds": 0.14458539999759523,
+   "seconds": 0.14100340000004508,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "boundml 0.1.0 (revision 4a14d5050d, x86_64-pc-windows-msvc)"
+   "output": "boundml 0.1.0 (revision d8fbe67918, x86_64-pc-windows-msvc)"
   },
   {
    "step": "init",
    "command": "boundml init demo",
-   "seconds": 0.014708500006236136,
+   "seconds": 0.015388899999379646,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -28,7 +28,7 @@
   {
    "step": "validate",
    "command": "boundml validate demo/model.toml",
-   "seconds": 0.029247200000099838,
+   "seconds": 0.025298799999291077,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -37,16 +37,16 @@
   {
    "step": "train",
    "command": "boundml train demo/model.toml --checkpoint demo/ckpt --quiet",
-   "seconds": 0.16855539999960456,
+   "seconds": 0.16803770000115037,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "training complete after 1890 steps in 0.16s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
+   "output": "training complete after 1890 steps in 0.15s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
   },
   {
    "step": "evaluate",
    "command": "boundml evaluate demo/ckpt --data demo/data/test.csv",
-   "seconds": 0.037075000000186265,
+   "seconds": 0.029993899996043183,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -55,7 +55,7 @@
   {
    "step": "pack",
    "command": "boundml pack demo/ckpt --out demo/model.boundml",
-   "seconds": 0.028425800002878532,
+   "seconds": 0.02819399999862071,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -64,7 +64,7 @@
   {
    "step": "verify",
    "command": "boundml verify demo/model.boundml",
-   "seconds": 0.012361200002487749,
+   "seconds": 0.012773300004482735,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -73,7 +73,7 @@
   {
    "step": "predict",
    "command": "boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3",
-   "seconds": 0.012936299994180445,
+   "seconds": 0.01328510000166716,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -82,7 +82,7 @@
   {
    "step": "budget failure",
    "command": "boundml plan demo/model.toml --mode infer --tensor-budget 64KiB",
-   "seconds": 0.012530600004538428,
+   "seconds": 0.012248899998667184,
    "exit": 4,
    "expected_exit": 4,
    "passed": true,
@@ -90,8 +90,8 @@
   },
   {
    "step": "real data: train",
-   "command": "boundml train <home>\\AppData\\Local\\Temp\\boundml release smoke 6mv3a9rm\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\examples\\breast_cancer\\linear.toml --checkpoint bc/ckpt --quiet",
-   "seconds": 0.3861056000023382,
+   "command": "boundml train <home>\\AppData\\Local\\Temp\\boundml release smoke 67uayzj6\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\examples\\breast_cancer\\linear.toml --checkpoint bc/ckpt --quiet",
+   "seconds": 0.3819813999944017,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -99,18 +99,18 @@
   },
   {
    "step": "real data: evaluate",
-   "command": "boundml evaluate bc/ckpt --data <home>\\AppData\\Local\\Temp\\boundml release smoke 6mv3a9rm\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv",
-   "seconds": 0.03930410000612028,
+   "command": "boundml evaluate bc/ckpt --data <home>\\AppData\\Local\\Temp\\boundml release smoke 67uayzj6\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv",
+   "seconds": 0.02635069999814732,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "metrics on <home>\\AppData\\Local\\Temp\\boundml release smoke 6mv3a9rm\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv:\n  accuracy       0.9597   (constant baseline 0.5806)\n  f1             0.9495   (constant baseline 0.0000)\n  log_loss       0.1379   (constant baseline 0.6870)\n  precision      1.0000   (constant baseline 0.0000)\n  recall         0.9038   (constant baseline 0.0000)\n  rows         124.0000   (constant baseline 124.0000)"
+   "output": "metrics on <home>\\AppData\\Local\\Temp\\boundml release smoke 67uayzj6\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv:\n  accuracy       0.9597   (constant baseline 0.5806)\n  f1             0.9495   (constant baseline 0.0000)\n  log_loss       0.1379   (constant baseline 0.6870)\n  precision      1.0000   (constant baseline 0.0000)\n  recall         0.9038   (constant baseline 0.0000)\n  rows         124.0000   (constant baseline 124.0000)"
   }
  ],
- "seconds_init_to_first_prediction": 0.22462600000289967,
- "seconds_extract": 0.019727699997019954,
- "sha256": "d26e4763ff432e549eb9495f8b67ec9fe25b171d854352d027d4dde6e24f7910",
- "bytes": 1643221,
+ "seconds_init_to_first_prediction": 0.2249057000008179,
+ "seconds_extract": 0.02006420000543585,
+ "sha256": "121f2ee0262663bca5da662a19f92cb73e84eaf9480001787d19db23f76ad4fa",
+ "bytes": 1643374,
  "target": "x86_64-pc-windows-msvc",
  "built_on": "Windows-11-10.0.26200-SP0",
  "version": "0.1.0"

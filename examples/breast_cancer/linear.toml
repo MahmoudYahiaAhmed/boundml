@@ -1,5 +1,6 @@
 # UCI Breast Cancer Wisconsin (Diagnostic), CC BY 4.0. Binary: diagnosis M (malignant) vs B.
-# Prepare data first: python -I datasets/prepare.py --download, then boundml split (see docs/walkthroughs.md).
+# The split CSVs ship with the repository and the release archive (datasets/breast_cancer/).
+# Run from the repository or archive root. To rebuild them from the UCI source, see datasets/README.md.
 name = "breast-cancer-linear"
 seed = 2026
 

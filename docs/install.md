@@ -10,14 +10,14 @@ no Python, no ML framework, no network access.
 | macOS arm64 (`aarch64-apple-darwin`) | `boundml-<version>-aarch64-apple-darwin.tar.gz` | produced by the release workflow; **not yet observed running** |
 | Anything with Rust 1.94+ | build from source (below) | source is portable; only Windows has been built and tested |
 
-Archives are attached to this repository's [Releases](../../releases) page. Each
+Archives are attached to this repository's [Releases](../../../releases) page. Each
 archive has a `.sha256` file, and the release has a combined `SHA256SUMS`.
 
 ## Windows (PowerShell)
 
 ```powershell
 $v = "0.1.0"; $t = "x86_64-pc-windows-msvc"
-Get-FileHash ".\boundml-$v-$t.zip" -Algorithm SHA256   # compare with boundml-$v-$t.zip.sha256
+(Get-FileHash ".\boundml-$v-$t.zip" -Algorithm SHA256).Hash -eq (Get-Content ".\boundml-$v-$t.zip.sha256").Split(" ")[0].ToUpper()   # True = match
 Expand-Archive ".\boundml-$v-$t.zip" -DestinationPath "$env:LOCALAPPDATA\Programs"
 & "$env:LOCALAPPDATA\Programs\boundml-$v-$t\boundml.exe" --version
 ```
@@ -56,7 +56,7 @@ cargo install --path crates/boundml-cli --locked
 ```
 
 This installs `boundml` into `~/.cargo/bin` (Windows: `%USERPROFILE%\.cargo\bin`).
-A clean release build takes about 1–2 minutes on an 8-core machine. To put it
+A release build took 32 s on an 8-core machine with crate downloads already cached; the first build also downloads about 50 crates. To put it
 somewhere else, add `--root <dir>`.
 
 BoundML is **not yet published on crates.io**. `cargo install boundml-cli` only works

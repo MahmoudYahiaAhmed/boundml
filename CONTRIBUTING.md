@@ -38,6 +38,20 @@ If you change the import path:
 python migrate/check_migration.py
 ```
 
+## Release and presentation tooling
+
+| Task | Command |
+|---|---|
+| Build, package, checksum and smoke-test a release archive | `python scripts/release.py --out dist` |
+| Re-record the README demo from the real binary | `python scripts/record_demo.py` |
+| Re-render banner, diagram and social preview (needs Chrome/Edge and Pillow) | `python scripts/render_assets.py` |
+| Benchmarks (see docs/benchmarks.md for prerequisites) | `python bench/run_bench.py --runs 5` then `python bench/report.py` |
+| Stress test | `python bench/run_stress.py 300` |
+
+Releases are cut by pushing a `v*` tag. `release.yml` builds and smoke-tests the
+archives and creates a **draft** GitHub release for a maintainer to review. crates.io
+publication is the separate, manual `publish-crates.yml` workflow.
+
 ## Rules
 
 - Each new operator needs forward and backward kernels, an independent f64 reference

@@ -29,13 +29,17 @@ in [docs/install.md](docs/install.md).
 
 From a checkout instead (Rust 1.94+): `cargo install --path crates/boundml-cli --locked`.
 
+The commands below are written as `boundml …`. In **PowerShell**, from the extracted
+folder, type `.\boundml …` instead, or add the folder to `PATH` as shown in
+[docs/install.md](docs/install.md).
+
 ```bash
 boundml --version
 ```
 ```text
 boundml 0.1.0 (revision 1f4146b7fe, x86_64-pc-windows-msvc)
 ```
-(The revision and target identify your build.)
+The revision (source commit) and target in parentheses identify your build and will differ.
 
 ## Quickstart: CSV → model → prediction
 
@@ -119,8 +123,8 @@ fn main() -> Result<(), boundml_artifact::ArtifactError> {
 }
 ```
 
-Runnable versions: [`examples/embed`](examples/embed/src/main.rs) (`cargo run -p
-boundml-embed-example -- demo/model.boundml temperature=20 humidity= load=0.5`) and
+Runnable versions: [`examples/embed`](examples/embed/src/main.rs) (from a checkout:
+`cargo run -p boundml-embed-example -- <path to>/demo/model.boundml temperature=20 humidity= load=0.5`) and
 [`train_and_embed`](crates/boundml-train/examples/train_and_embed.rs), which trains
 from Rust code.
 

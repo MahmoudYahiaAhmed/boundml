@@ -5,8 +5,9 @@
 Steps:
 1. `cargo build --release --locked -p boundml-cli [--target TRIPLE]`
 2. Stage `boundml-<version>-<target>/` with the executable, README, licenses,
-   CHANGELOG, third-party notices, the quickstart doc and the breast-cancer
-   real-data example (CC BY 4.0, attribution included).
+   CHANGELOG, third-party notices, all user docs and images referenced by the README,
+   the example sources, and the breast-cancer real-data example (CC BY 4.0,
+   attribution included).
 3. Write `.zip` (Windows) or `.tar.gz` (others) with sorted entries and fixed
    timestamps, plus `<archive>.sha256` and an updated `SHA256SUMS`.
 4. Extract the *archive* into a fresh directory whose path contains spaces, and run
@@ -32,23 +33,27 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)
 
-INCLUDE = [
-    ("README.md", "README.md"),
-    ("LICENSE-MIT", "LICENSE-MIT"),
-    ("LICENSE-APACHE", "LICENSE-APACHE"),
-    ("CHANGELOG.md", "CHANGELOG.md"),
-    ("THIRD_PARTY.md", "THIRD_PARTY.md"),
-    ("docs/quickstart.md", "docs/quickstart.md"),
-    ("docs/install.md", "docs/install.md"),
-    ("docs/errors.md", "docs/errors.md"),
-    ("docs/troubleshooting.md", "docs/troubleshooting.md"),
-    ("examples/breast_cancer/linear.toml", "examples/breast_cancer/linear.toml"),
-    ("examples/breast_cancer/mlp.toml", "examples/breast_cancer/mlp.toml"),
-    ("datasets/README.md", "datasets/README.md"),
-    ("datasets/breast_cancer/train.csv", "datasets/breast_cancer/train.csv"),
-    ("datasets/breast_cancer/valid.csv", "datasets/breast_cancer/valid.csv"),
-    ("datasets/breast_cancer/test.csv", "datasets/breast_cancer/test.csv"),
+# Files shipped in the archive. Directories are copied recursively (patterns below),
+# so the archive's README and docs links resolve offline.
+INCLUDE_FILES = [
+    "README.md", "LICENSE-MIT", "LICENSE-APACHE", "CHANGELOG.md", "THIRD_PARTY.md",
+    "ROADMAP.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md",
+    "migrate/README.md", "examples/embed/src/main.rs", "examples/power-app/src/main.rs",
+    "examples/power-app/Cargo.toml", "crates/boundml-train/examples/train_and_embed.rs",
+    "datasets/README.md",
 ]
+INCLUDE_GLOBS = [
+    "docs/*.md", "docs/results/*.json", "assets/*.png", "assets/*.svg", "assets/demo.cast",
+    "assets/demo-transcript.txt", "examples/breast_cancer/*.toml", "datasets/breast_cancer/train.csv",
+    "datasets/breast_cancer/valid.csv", "datasets/breast_cancer/test.csv",
+]
+
+
+def included() -> list[str]:
+    out = list(INCLUDE_FILES)
+    for g in INCLUDE_GLOBS:
+        out += [p.relative_to(ROOT).as_posix() for p in sorted(ROOT.glob(g))]
+    return sorted(set(out))
 
 
 def version() -> str:
@@ -106,6 +111,23 @@ def extract(path: pathlib.Path, dest: pathlib.Path) -> None:
             t.extractall(dest, filter="data")
 
 
+LINK = __import__("re").compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)|src=\"([^\"]+)\"")
+
+
+def broken_links(home: pathlib.Path) -> list[str]:
+    """Relative links in the archive's markdown that do not resolve inside it.
+    Links that only exist on GitHub (../../releases, ../../compare) are skipped."""
+    bad = []
+    for md in [home / "README.md", *sorted((home / "docs").glob("*.md"))]:
+        for m in LINK.finditer(md.read_text(encoding="utf-8")):
+            target = m.group(1) or m.group(2)
+            if target.startswith(("http://", "https://", "mailto:")) or "releases" in target or "compare/" in target:
+                continue
+            if not (md.parent / target).resolve().exists():
+                bad.append(f"{md.relative_to(home).as_posix()} -> {target}")
+    return bad
+
+
 def smoke(path: pathlib.Path, stage_name: str, ver: str) -> dict:
     steps, ok = [], True
     with tempfile.TemporaryDirectory(prefix="boundml release smoke ") as d:
@@ -114,6 +136,9 @@ def smoke(path: pathlib.Path, stage_name: str, ver: str) -> dict:
         extract(path, root)
         steps.append({"step": "extract archive", "seconds": time.perf_counter() - t0, "exit": 0})
         home = root / stage_name
+        bad = broken_links(home)
+        ok &= not bad
+        steps.append({"step": "archive links resolve", "seconds": 0.0, "exit": 0, "passed": not bad, "output": "; ".join(bad)})
         exe = home / ("boundml.exe" if path.suffix == ".zip" else "boundml")
         work = pathlib.Path(d) / "first project"
         work.mkdir()
@@ -162,10 +187,10 @@ def main() -> None:
         stage = pathlib.Path(tmp) / stage_name
         stage.mkdir()
         shutil.copy2(exe, stage / exe.name)
-        for src, dst in INCLUDE:
-            d = stage / dst
+        for rel in included():
+            d = stage / rel
             d.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / src, d)
+            shutil.copy2(ROOT / rel, d)
         path = archive(stage, out, "windows" in target)
     digest = sha256(path)
     (out / f"{path.name}.sha256").write_text(f"{digest}  {path.name}\n")
