@@ -32,7 +32,9 @@ boundml validate demo/model.toml
 ```
 
 ```text
-VALIDATE_OUTPUT
+demo/model.toml: valid
+  task Regression, 3 features, data headers ok (2 file(s))
+  training plan 23.0 KiB (budget 16MiB), inference plan 66.6 KiB (budget 1MiB)
 ```
 
 This checks the config, the CSV headers (columns are matched by name) and both
@@ -53,7 +55,12 @@ boundml evaluate demo/ckpt --data demo/data/test.csv
 ```
 
 ```text
-EVALUATE_OUTPUT
+metrics on demo/data/test.csv:
+  mae            0.1465   (constant baseline 2.2394)
+  mse            0.0352   (constant baseline 11.0583)
+  r2             0.9968   (constant baseline -0.0071)
+  rmse           0.1877   (constant baseline 3.3254)
+  rows         400.0000   (constant baseline 400.0000)
 ```
 
 `constant baseline` is what you would get by always predicting the training mean. The
@@ -68,7 +75,13 @@ boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv
 ```
 
 ```text
-PACK_VERIFY_PREDICT_OUTPUT
+packed 'example-regression' -> demo/model.boundml (17 synthetic self-test vectors, verified after write)
+integrity, version and consistency checks passed; self-test: 17 vector(s), max abs error 0e0 -> PASS
+wrote 400 predictions to demo/pred.csv in 0.001s
+  line   power
+     2  4.5001
+     3  6.3667
+     4  7.7849
 ```
 
 `demo/pred.csv` holds one row per input row: the input line number and the predicted
@@ -88,7 +101,7 @@ curl -s -X POST localhost:8080/v1/predict -H "content-type: application/json" -d
 ```
 
 ```text
-SERVE_OUTPUT
+{"model":"example-regression","output_names":["power"],"outputs":[[4.8455453]]}
 ```
 
 Stop with Ctrl-C; in-flight requests finish first. The server binds to `127.0.0.1` and
@@ -103,7 +116,7 @@ boundml plan demo/model.toml --mode infer --tensor-budget 64KiB
 ```
 
 ```text
-BUDGET_OUTPUT
+error: BML-C005 tensor budget exceeded: plan needs 68228 bytes but the budget is 65536 bytes; largest contributors: arena x 2 session(s) (65536 bytes), shared weights (2692 bytes), dense0.act (16384 bytes), dense0.matmul (16384 bytes), dense0.pre (16384 bytes)
 ```
 
 Exit code 4. The message names the largest contributors: the arena is planned for two
@@ -119,12 +132,25 @@ boundml plan demo/model.toml --mode infer --tensor-budget 64KiB
 ```
 
 ```text
-BUDGET_FIXED_OUTPUT
+  TOTAL planned tensor bytes             34.6 KiB  (35460 B)
+  not covered: package/checkpoint loading buffers; graph and manifest metadata; ...
+  within budget of 64.0 KiB (65536 B)
 ```
 
-A schema error looks like this. Rename a column and predict:
+A schema error looks like this. Copy the test file with the `humidity` column renamed
+(for example to `humidity_pct`) as `demo/data/renamed.csv`, then predict:
 
-SCHEMA_ERROR_BLOCK
+```bash
+boundml predict demo/model.boundml --data demo/data/renamed.csv --out demo/p2.csv
+```
+
+```text
+error: BML-D004 header of demo/data/renamed.csv: missing feature column(s): humidity
+```
+
+Exit code 3, and no output file is written. Columns are matched by name, so the fix
+is to restore the header name `humidity` (or retrain with the new name). Column
+*order* never matters. See [troubleshooting](troubleshooting.md) for the related header errors.
 
 ## Path 2 — Rust
 
@@ -145,18 +171,50 @@ boundml-artifact = { path = "<path to this repository>/crates/boundml-artifact" 
 `power-app/src/main.rs`:
 
 ```rust
-EMBED_SOURCE
+use boundml_artifact::Package;
+use std::sync::Arc;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = std::env::args().skip(1);
+    let path = args
+        .next()
+        .ok_or("usage: power-app <model.boundml> [name=value ...]")?;
+    let package = Arc::new(Package::load(path.as_ref())?); // checked: hashes, version, graph, memory plan
+    let mut predictor = package.predictor(1)?;
+
+    // Feature values by name; an empty value means "missing".
+    let pairs: Vec<(String, Option<f64>)> = args
+        .map(|a| {
+            let (k, v) = a
+                .split_once('=')
+                .ok_or(format!("expected name=value, got {a}"))?;
+            Ok((
+                k.to_string(),
+                if v.is_empty() { None } else { Some(v.parse()?) },
+            ))
+        })
+        .collect::<Result<_, Box<dyn std::error::Error>>>()?;
+    let mut raw = vec![None; predictor.n_features()];
+    predictor.fill_named(pairs.iter().map(|(k, v)| (k.as_str(), *v)), &mut raw, 0)?;
+
+    let mut out = vec![0.0f32; predictor.output_cols()];
+    predictor.predict_raw(&raw, 1, &mut out)?; // fitted preprocessing + model
+    for (name, value) in package.manifest().output_names().iter().zip(&out) {
+        println!("{name} = {value:.3}");
+    }
+    Ok(())
+}
 ```
 
 ```bash
-cargo run --release --manifest-path power-app/Cargo.toml -- demo/model.boundml
+cargo run --release --manifest-path power-app/Cargo.toml -- demo/model.boundml temperature=20 humidity= load=0.5
 ```
 
 ```text
-EMBED_OUTPUT
+power = 4.822
 ```
 
-The arguments are `name=value` pairs (an empty value means missing). The program loads
+The arguments after the package are `name=value` pairs (an empty value means missing). The program loads
 the package once, validates it, and then predicts without heap allocation per call.
 For several threads, create one `Predictor` per thread from the same
 `Arc<Package>`. Never share a `Predictor` between threads.

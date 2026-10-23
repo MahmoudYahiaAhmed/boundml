@@ -33,8 +33,9 @@ From a checkout instead (Rust 1.94+): `cargo install --path crates/boundml-cli -
 boundml --version
 ```
 ```text
-boundml 0.1.0 (revision <git revision>, x86_64-pc-windows-msvc)
+boundml 0.1.0 (revision 1f4146b7fe, x86_64-pc-windows-msvc)
 ```
+(The revision and target identify your build.)
 
 ## Quickstart: CSV → model → prediction
 
@@ -48,16 +49,17 @@ boundml train demo/model.toml --checkpoint demo/ckpt --quiet
 boundml evaluate demo/ckpt --data demo/data/test.csv
 ```
 ```text
-training complete after 1890 steps in 0.19s; checkpoint: demo/ckpt
+training complete after 1890 steps in 0.16s; checkpoint: demo/ckpt
+final epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913
 metrics on demo/data/test.csv:
-  mae            0.1879   (constant baseline 2.2394)
-  mse            0.0660   (constant baseline 11.0583)
-  r2             0.9940   (constant baseline -0.0071)
-  rmse           0.2569   (constant baseline 3.3254)
+  mae            0.1465   (constant baseline 2.2394)
+  mse            0.0352   (constant baseline 11.0583)
+  r2             0.9968   (constant baseline -0.0071)
+  rmse           0.1877   (constant baseline 3.3254)
   rows         400.0000   (constant baseline 400.0000)
 ```
 
-The model predicts `power` with an RMSE of 0.26 on held-out rows. Predicting the
+The model predicts `power` with an RMSE of 0.19 on held-out rows. Predicting the
 training mean for every row, the "constant baseline", gives 3.33.
 
 ```bash
@@ -67,10 +69,10 @@ boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv
 ```text
 packed 'example-regression' -> demo/model.boundml (17 synthetic self-test vectors, verified after write)
 wrote 400 predictions to demo/pred.csv in 0.001s
-  line  power
-  2  4.4087
-  3  6.4135
-  4  3.3087
+  line   power
+     2  4.5001
+     3  6.3667
+     4  7.7849
 ```
 
 Each prediction is the model's estimate of `power` for one CSV row. `line` is the
@@ -84,11 +86,11 @@ the rows go in raw.
 boundml plan demo/model.toml --mode infer --tensor-budget 64KiB
 ```
 ```text
-error: BML-C005 tensor budget exceeded: plan needs 68228 bytes but the budget is 65536 bytes; largest contributors: arena x 2 session(s) (65536 bytes), shared weights (2692 bytes), ...
+error: BML-C005 tensor budget exceeded: plan needs 68228 bytes but the budget is 65536 bytes; largest contributors: arena x 2 session(s) (65536 bytes), shared weights (2692 bytes), dense0.act (16384 bytes), dense0.matmul (16384 bytes), dense0.pre (16384 bytes)
 ```
 
-Exit code 4. Fix it by lowering `deploy.sessions` or `deploy.max_batch` in
-`demo/model.toml`, or by raising the budget. Every error code and its correction is
+Exit code 4. Fix it by lowering `deploy.max_batch` (128 → 64 fits) or
+`deploy.sessions` in `demo/model.toml`, or by raising the budget. Every error code and its correction is
 in [docs/errors.md](docs/errors.md). Full walkthrough with real datasets:
 [docs/quickstart.md](docs/quickstart.md).
 
