@@ -11,7 +11,7 @@ Python, ML framework or network.
   in about a second of execution time from a prebuilt archive (measured by the release smoke test).
 - Embed packages in Rust with `boundml-artifact::Predictor`. Features are given by name,
   the fitted preprocessing is applied for you, and each call allocates nothing.
-- Know the planned tensor memory before anything is allocated (`boundml plan`); budgets
+- Know the planned tensor memory before its arenas are allocated (`boundml plan`); budgets
   are enforced on load.
 - Gate model updates in CI with `boundml compare current candidate --data holdout.csv`
   (exit code 6 on breaking changes).

@@ -10,5 +10,5 @@ expected output is in `assets/demo-transcript.txt`.
 | 18–28 s | "Train from the CSV. Preprocessing is fitted on the training rows only." | `boundml train demo/model.toml --checkpoint demo/ckpt --quiet`, then `boundml evaluate demo/ckpt --data demo/data/test.csv` (point at the constant baseline column). |
 | 28–38 s | "Package it: schema, fitted preprocessing, weights, self-tests and a memory plan, all checked on load." | `boundml pack demo/ckpt --out demo/model.boundml`, then `boundml verify demo/model.boundml` |
 | 38–48 s | "Predict from CSV. The Rust API does exactly the same thing in-process." | `boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3`; flash `examples/embed/src/main.rs`. |
-| 48–56 s | "If the model can't fit your memory budget, you find out before anything is allocated, and you get told why." | `boundml plan demo/model.toml --mode infer --tensor-budget 64KiB` (exit code 4, contributors listed). |
+| 48–56 s | "If the model can't fit your memory budget, you find out before its tensor storage is allocated, and you get told why." | `boundml plan demo/model.toml --mode infer --tensor-budget 64KiB` (exit code 4, contributors listed). |
 | 56–60 s | "CPU only, early release. Benchmarks, including where other runtimes win, are linked in the README." | Show the benchmark section. |

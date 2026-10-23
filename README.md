@@ -84,7 +84,7 @@ row's line number in the input file. The package applied the preprocessing fitte
 during training (standardization; mean imputation for the blank humidity cells), so
 the rows go in raw.
 
-**When it doesn't fit**, BoundML says so before allocating anything:
+**When it doesn't fit**, BoundML says so before allocating any tensor storage for the plan:
 
 ```bash
 boundml plan demo/model.toml --mode infer --tensor-budget 64KiB

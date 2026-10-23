@@ -60,6 +60,16 @@ Unknown fields are rejected at every level (`deny_unknown_fields`).
    through the full preprocessing + model path. `boundml verify`, `predict`, `serve`
    and the embedding example all run `verify()` after loading.
 
+**Loader memory (separate from the steady-state bound).** Loading is bounded but
+not covered by the tensor budget. In order: the manifest (≤ 16 MiB) and its hash
+file are read; the version, graph, tensor declarations, schema, preprocessing,
+bounds, test vectors and memory plan are validated from the manifest alone; the
+declared weight size must equal the validated graph's f32 parameters plus at most a
+1 MiB safetensors header; only then is the weight file read (≤ that size, ≤ 1 GiB) and
+hashed. Transiently the file bytes, the decoded tensors and the assembled weights
+coexist, so the loader peak is roughly the manifest plus three times the weight
+bytes; afterwards only the weights and the per-session arenas remain.
+
 `Package::save` validates the same things, self-tests in memory **before** writing
 (a failing package is never written), writes atomically, then reloads from disk and
 self-tests again.

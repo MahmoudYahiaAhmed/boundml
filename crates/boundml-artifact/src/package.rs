@@ -8,7 +8,7 @@ use crate::fsutil::{
 };
 use crate::manifest::*;
 use crate::predictor::Predictor;
-use boundml_core::{Graph, GraphDef, MemoryReport, Model};
+use boundml_core::{Graph, GraphDef, MemoryReport, Mode, Model, Plan};
 use boundml_data::{Preprocessor, Schema};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -28,6 +28,8 @@ pub const MAX_WEIGHTS_BYTES: u64 = 1 << 30;
 pub const MAX_PLANNED_TENSOR_BYTES: u64 = 1 << 30;
 /// Upper bound on `bounds.sessions`.
 pub const MAX_SESSIONS: usize = 256;
+/// Largest safetensors JSON header accepted (the tensor table for <= 1024 parameters).
+pub const MAX_SAFETENSORS_HEADER: u64 = 1 << 20;
 
 /// Everything needed to write a package (the manifest is derived from it).
 #[derive(Debug, Clone)]
@@ -178,7 +180,7 @@ impl Package {
             files: BTreeMap::new(),
             test_vectors: None,
         };
-        check_consistency(&manifest, &model)?;
+        check_consistency(&manifest, model.graph())?;
         let pkg = Package::assemble(manifest, model);
         let vectors = if spec.test_inputs.is_empty() {
             None
@@ -291,6 +293,27 @@ impl Package {
                 limit: MAX_WEIGHTS_BYTES,
             });
         }
+        // Preflight: everything that can be checked from the (small, bounded) manifest
+        // is checked before the weight payload is read into memory.
+        let graph = Graph::new(manifest.graph.clone()).map_err(rejected)?;
+        check_tensor_declarations(&graph, &manifest.tensors)?;
+        check_consistency(&manifest, &graph).map_err(|e| match e {
+            ArtifactError::Core(c) => rejected(c),
+            ArtifactError::Data(d) => ArtifactError::Inconsistent(d.to_string()),
+            other => other,
+        })?;
+        check_test_vectors(&manifest)?;
+        // The payload is exactly the declared f32 tensors plus a bounded header, so its
+        // declared size is checked against the validated graph before reading it.
+        let data_bytes = graph.param_count() as u64 * 4;
+        if fh.bytes < data_bytes || fh.bytes > data_bytes + 8 + MAX_SAFETENSORS_HEADER {
+            return Err(ArtifactError::Inconsistent(format!(
+                "declared weights size {} bytes does not fit {} f32 parameters ({} bytes) plus a header of at most {MAX_SAFETENSORS_HEADER} bytes",
+                fh.bytes,
+                graph.param_count(),
+                data_bytes
+            )));
+        }
         let weights_bytes = read_limited(&dir.join(WEIGHTS_FILE), fh.bytes)?;
         let found = sha256_hex(&weights_bytes);
         if found != fh.sha256 || weights_bytes.len() as u64 != fh.bytes {
@@ -300,16 +323,10 @@ impl Package {
                 found,
             });
         }
-        let graph = Graph::new(manifest.graph.clone()).map_err(rejected)?;
         let decoded = decode_tensors(&weights_bytes, boundml_core::graph::MAX_PARAMS)?;
+        drop(weights_bytes);
         let weights = assemble_weights(&graph, &manifest.tensors, decoded)?;
         let model = Arc::new(Model::new(graph, weights).map_err(rejected)?);
-        check_consistency(&manifest, &model).map_err(|e| match e {
-            ArtifactError::Core(c) => rejected(c),
-            ArtifactError::Data(d) => ArtifactError::Inconsistent(d.to_string()),
-            other => other,
-        })?;
-        check_test_vectors(&manifest)?;
         Ok(Package::assemble(manifest, model))
     }
 
@@ -395,6 +412,32 @@ fn rejected(e: boundml_core::CoreError) -> ArtifactError {
     }
 }
 
+/// Tensor declarations must match the graph's parameters exactly (checked before
+/// any weight bytes are read).
+fn check_tensor_declarations(graph: &Graph, declared: &[TensorInfo]) -> Result<()> {
+    let params = graph.params();
+    if declared.len() != params.len() {
+        return Err(ArtifactError::Inconsistent(format!(
+            "graph has {} parameters, manifest declares {} tensors",
+            params.len(),
+            declared.len()
+        )));
+    }
+    for (p, d) in params.iter().zip(declared) {
+        if d.name != p.name
+            || d.shape != [p.rows, p.cols]
+            || d.dtype != "f32"
+            || d.layout != "row_major"
+        {
+            return Err(ArtifactError::Inconsistent(format!(
+                "tensor declaration {:?} does not match graph parameter '{}' [{}, {}] f32 row_major",
+                d, p.name, p.rows, p.cols
+            )));
+        }
+    }
+    Ok(())
+}
+
 fn assemble_weights(
     graph: &Graph,
     declared: &[TensorInfo],
@@ -441,7 +484,8 @@ fn assemble_weights(
     Ok(out)
 }
 
-fn check_consistency(m: &Manifest, model: &Model) -> Result<()> {
+/// Metadata-only consistency checks (no weights needed), including the memory plan.
+fn check_consistency(m: &Manifest, graph: &Graph) -> Result<()> {
     m.schema.validate()?;
     m.preprocessing.validate(&m.schema)?;
     let inc = |s: String| Err(ArtifactError::Inconsistent(s));
@@ -452,17 +496,18 @@ fn check_consistency(m: &Manifest, model: &Model) -> Result<()> {
             m.schema.task()
         ));
     }
-    if model.input_cols() != m.schema.features.len() {
+    let output_cols = graph.output_shape().cols.resolve(1);
+    if graph.input_cols() != m.schema.features.len() {
         return inc(format!(
             "graph input has {} columns, schema has {} features",
-            model.input_cols(),
+            graph.input_cols(),
             m.schema.features.len()
         ));
     }
-    if model.output_cols() != m.task.output_cols() {
+    if output_cols != m.task.output_cols() {
         return inc(format!(
             "graph output has {} columns, task needs {}",
-            model.output_cols(),
+            output_cols,
             m.task.output_cols()
         ));
     }
@@ -473,7 +518,8 @@ fn check_consistency(m: &Manifest, model: &Model) -> Result<()> {
     if b.sessions == 0 || b.sessions > MAX_SESSIONS {
         return inc(format!("bounds.sessions must be 1..={MAX_SESSIONS}"));
     }
-    let report = model.inference_report(b.max_batch, b.sessions, b.planner)?;
+    let report =
+        Plan::new(graph, Mode::Inference, b.max_batch, b.planner)?.report(graph, b.sessions, 0);
     if let Some(budget) = b.tensor_budget_bytes {
         report.check_budget(budget)?;
     }
