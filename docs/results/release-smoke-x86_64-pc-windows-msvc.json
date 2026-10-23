@@ -4,7 +4,7 @@
  "steps": [
   {
    "step": "extract archive",
-   "seconds": 0.03439040000375826,
+   "seconds": 0.03521619999810355,
    "exit": 0
   },
   {
@@ -17,16 +17,16 @@
   {
    "step": "version",
    "command": "boundml --version",
-   "seconds": 0.1409293000033358,
+   "seconds": 0.13603990000410704,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "boundml 0.1.0 (revision ba25bcba4b, x86_64-pc-windows-msvc)"
+   "output": "boundml 0.1.0 (revision c303e1caea, x86_64-pc-windows-msvc)"
   },
   {
    "step": "init",
    "command": "boundml init demo",
-   "seconds": 0.015056999996886589,
+   "seconds": 0.014573400003428105,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -35,7 +35,7 @@
   {
    "step": "validate",
    "command": "boundml validate demo/model.toml",
-   "seconds": 0.02499359999637818,
+   "seconds": 0.024860700003046077,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -44,16 +44,16 @@
   {
    "step": "train",
    "command": "boundml train demo/model.toml --checkpoint demo/ckpt --quiet",
-   "seconds": 0.17403090000152588,
+   "seconds": 0.1669359000006807,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
-   "output": "training complete after 1890 steps in 0.16s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
+   "output": "training complete after 1890 steps in 0.15s; checkpoint: demo/ckpt\nfinal epoch: train_loss=0.03957  valid: mae=0.1527 mse=0.0366 r2=0.9954 rmse=0.1913"
   },
   {
    "step": "evaluate",
    "command": "boundml evaluate demo/ckpt --data demo/data/test.csv",
-   "seconds": 0.03030600000056438,
+   "seconds": 0.030969299994467292,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -62,7 +62,7 @@
   {
    "step": "pack",
    "command": "boundml pack demo/ckpt --out demo/model.boundml",
-   "seconds": 0.028655499998421874,
+   "seconds": 0.02820219999557594,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -71,7 +71,7 @@
   {
    "step": "verify",
    "command": "boundml verify demo/model.boundml",
-   "seconds": 0.011828100003185682,
+   "seconds": 0.012005700002191588,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -80,7 +80,7 @@
   {
    "step": "predict",
    "command": "boundml predict demo/model.boundml --data demo/data/test.csv --out demo/pred.csv --preview 3",
-   "seconds": 0.01515760000620503,
+   "seconds": 0.013958900002762675,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -89,7 +89,7 @@
   {
    "step": "budget failure",
    "command": "boundml plan demo/model.toml --mode infer --tensor-budget 64KiB",
-   "seconds": 0.012575299995660316,
+   "seconds": 0.012095800004317425,
    "exit": 4,
    "expected_exit": 4,
    "passed": true,
@@ -98,7 +98,7 @@
   {
    "step": "real data: train",
    "command": "boundml train <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\examples\\breast_cancer\\linear.toml --checkpoint bc/ckpt --quiet",
-   "seconds": 0.38303450000239536,
+   "seconds": 0.3839890000017476,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
@@ -107,17 +107,17 @@
   {
    "step": "real data: evaluate",
    "command": "boundml evaluate bc/ckpt --data <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv",
-   "seconds": 0.026871300004131626,
+   "seconds": 0.02551859999948647,
    "exit": 0,
    "expected_exit": 0,
    "passed": true,
    "output": "metrics on <tmp>\\My Apps\\boundml-0.1.0-x86_64-pc-windows-msvc\\datasets\\breast_cancer\\test.csv:\n  accuracy       0.9597   (constant baseline 0.5806)\n  f1             0.9495   (constant baseline 0.0000)\n  log_loss       0.1379   (constant baseline 0.6870)\n  precision      1.0000   (constant baseline 0.0000)\n  recall         0.9038   (constant baseline 0.0000)\n  rows         124.0000   (constant baseline 124.0000)"
   }
  ],
- "seconds_init_to_first_prediction": 0.23290100000303937,
- "seconds_extract": 0.03439040000375826,
- "sha256": "f5e3fa9770854b625a3289991b5df48339e13c460195c44f152063d523995640",
- "bytes": 2159512,
+ "seconds_init_to_first_prediction": 0.22367040000244742,
+ "seconds_extract": 0.03521619999810355,
+ "sha256": "bc36ddfb3d84f11d783e7605782df1c89297be4eb062e7c4f48cbcdbecd8e448",
+ "bytes": 2162175,
  "target": "x86_64-pc-windows-msvc",
  "built_on": "Windows-11-10.0.26200-SP0",
  "version": "0.1.0"
