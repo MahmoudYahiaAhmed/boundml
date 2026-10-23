@@ -1,0 +1,5 @@
+/target
+/out
+/datasets/raw
+*.tmp
+__pycache__/
