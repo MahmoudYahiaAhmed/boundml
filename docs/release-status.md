@@ -32,7 +32,7 @@ Legend:
 | macOS build/tests | source is portable | **no** | yes | unverified |
 | Real-data demonstrations | yes | yes (2 datasets) | no | results in `docs/walkthroughs.md` |
 | Benchmarks vs PyTorch / ONNX Runtime | yes | yes (5 runs) | no | one machine; native runtimes not compared |
-| Sustained stress test | yes | see below | no | |
+| Sustained stress test | yes | yes (300 s, `bench/run_stress.py`) | no | one machine |
 | Design-partner evaluation | plan only | **no** | — | no demand evidence |
 
 ## Acceptance matrix
@@ -51,7 +51,7 @@ Legend:
 | 10 | Invalid schemas, batches, ops, corrupted/oversized artifacts fail cleanly | passed | `boundml-data/tests`, `boundml-artifact/tests/package.rs`, `server.rs` |
 | 11 | Over-budget plans rejected before allocation, accurate accounting | passed | budget tests; `plan` report |
 | 12 | Allocation-free core paths; reuse does not corrupt live tensors | passed | `alloc_free.rs` (core + artifact); planner property test; Conservative = Reuse bitwise in gradcheck |
-| 13 | Sustained stress with duration and memory | STRESS_STATUS | `docs/results/stress.json` |
+| 13 | Sustained stress with duration and memory | passed: 300 s, 9,594 package reloads + self-tests, 9,594 train/checkpoint/resume cycles, 5.73 billion rows predicted by 4 concurrent sessions with zero result drift; working set 7.8 → 8.2 MiB (+0.8% from 2nd to 4th quarter), peak 8.5 MiB | `docs/results/stress.json` |
 | 14 | New-user walkthrough with real commands | passed by the author on this machine; not tried by a new user | `docs/walkthroughs.md`, CI smoke job (not observed) |
 | 15 | Compare reports breaking vs compatible on fixtures | passed | `package.rs::compare_classifies_changes`, e2e |
 | 16 | Server overload, malformed, timeout, shutdown bounded | passed | `boundml-cli/tests/server.rs` |
@@ -59,8 +59,7 @@ Legend:
 ## Checks run for this release (local)
 
 `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` (clean),
-`cargo test --workspace` (all passing; counts in the final summary of the release
-notes), `cargo doc --workspace --no-deps` (no warnings), `cargo build --release`,
+`cargo test --workspace --locked` (61 tests, 0 failures), `cargo doc --workspace --no-deps` (no warnings), `cargo build --release`,
 `python migrate/check_migration.py` (all passed), `python bench/run_bench.py --runs 5`,
 `python bench/run_stress.py 300`.
 
