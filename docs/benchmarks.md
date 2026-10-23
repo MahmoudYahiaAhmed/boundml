@@ -220,7 +220,8 @@ CI-readable `compare` before each model update.
 
 ## Pre-declared targets, re-evaluated
 
-The thresholds are unchanged from [benchmark-targets.md](benchmark-targets.md),
+The thresholds were committed before the first measurement and are unchanged
+(their original wording is in Git history, `docs/benchmark-targets.md`). Each is
 evaluated per dataset with the measurement the target names.
 
 <!-- TARGETS:BEGIN -->
@@ -247,5 +248,5 @@ evaluated per dataset with the measurement the target names.
 - The Python baselines include interpreter overhead per call. They represent a Python
   deployment, not the kernels' speed.
 - The ONNX Runtime C API, RTen and ExecuTorch were not measured.
-- These results do not show that anyone wants this workflow. That needs the
-  evaluations in [design-partner-plan.md](design-partner-plan.md).
+- These results do not show that anyone wants this workflow. That needs outside
+  developers deploying their own models.

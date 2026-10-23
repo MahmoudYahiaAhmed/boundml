@@ -40,7 +40,7 @@ INCLUDE_FILES = [
     "ROADMAP.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md",
     "migrate/README.md", "examples/embed/src/main.rs", "examples/power-app/src/main.rs",
     "examples/power-app/Cargo.toml", "crates/boundml-train/examples/train_and_embed.rs",
-    "datasets/README.md",
+    "datasets/README.md", "python/README.md",
 ]
 INCLUDE_GLOBS = [
     "docs/*.md", "docs/results/*.json", "docs/results/history/*/*", "assets/*.png", "assets/*.svg", "assets/demo.cast",
