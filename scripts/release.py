@@ -148,10 +148,11 @@ def smoke(path: pathlib.Path, stage_name: str, ver: str) -> dict:
             t = time.perf_counter()
             r = subprocess.run([str(exe), *args], cwd=work, capture_output=True, text=True)
             secs = time.perf_counter() - t
-            out = r.stdout + r.stderr
+            # Redact the temporary directory so reports never embed local user paths.
+            out = (r.stdout + r.stderr).replace(d, "<tmp>").replace(d.replace("\\", "/"), "<tmp>")
             good = r.returncode == expect and contains in out
             ok &= good
-            steps.append({"step": name, "command": "boundml " + " ".join(args), "seconds": secs,
+            steps.append({"step": name, "command": ("boundml " + " ".join(args)).replace(d, "<tmp>"), "seconds": secs,
                           "exit": r.returncode, "expected_exit": expect, "passed": good, "output": out.strip()[-1200:]})
 
         run("version", ["--version"], contains=f"boundml {ver}")
