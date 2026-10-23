@@ -147,7 +147,8 @@ pub fn train(cfg: &TrainConfig, base: &Path, opts: TrainOptions<'_>) -> Result<T
         let pre = Preprocessor::fit(&train_path, &schema, cfg.data.normalize)?;
         let labels = label_stats(&train_path, &schema)?;
         let spec = cfg.dense_spec();
-        let params = spec.init_params(&graph, &mut Rng::seed(cfg.seed));
+        let mut params = spec.init_params(&graph, &mut Rng::seed(cfg.seed));
+        init_output_bias(&graph, &mut params, &labels, &schema.task());
         let opt = Optimizer::new(cfg.training.optimizer.clone(), &graph)?;
         let progress = Progress {
             epoch: 0,
@@ -293,6 +294,34 @@ pub fn train(cfg: &TrainConfig, base: &Path, opts: TrainOptions<'_>) -> Result<T
         history: run.history,
         report,
     })
+}
+
+/// Start the output layer at the constant baseline: bias = training label mean
+/// (regression), log-odds of the positive class (binary) or log class priors
+/// (multiclass). Weights keep their random initialization. Classes with zero
+/// training rows get a floor probability of 1e-3 before the log.
+pub fn init_output_bias(graph: &Graph, params: &mut [f32], labels: &LabelStats, task: &Task) {
+    let Some(last) = graph.params().len().checked_sub(1) else {
+        return;
+    };
+    if graph.params()[last].rows != 1 {
+        return;
+    }
+    let o = graph.param_offset(last);
+    let len = graph.param_len(last);
+    let prior = labels.constant_output(task);
+    match task {
+        Task::Regression => params[o] = prior[0],
+        Task::Binary => {
+            let p = prior[0].clamp(1e-3, 1.0 - 1e-3);
+            params[o] = (p / (1.0 - p)).ln();
+        }
+        Task::Multiclass { .. } => {
+            for (b, p) in params[o..o + len].iter_mut().zip(&prior) {
+                *b = p.max(1e-3).ln();
+            }
+        }
+    }
 }
 
 fn file_name(p: &Path) -> String {

@@ -10,11 +10,19 @@ use std::sync::Arc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let path = args.next().ok_or("usage: embed <model.boundml> name=value ...")?;
+    let path = args
+        .next()
+        .ok_or("usage: embed <model.boundml> name=value ...")?;
     let pairs: Vec<(String, Option<f64>)> = args
         .map(|a| {
-            let (k, v) = a.split_once('=').ok_or(format!("expected name=value, got {a}"))?;
-            let v = if v.is_empty() { None } else { Some(v.parse::<f64>()?) };
+            let (k, v) = a
+                .split_once('=')
+                .ok_or(format!("expected name=value, got {a}"))?;
+            let v = if v.is_empty() {
+                None
+            } else {
+                Some(v.parse::<f64>()?)
+            };
             Ok((k.to_string(), v))
         })
         .collect::<Result<_, Box<dyn std::error::Error>>>()?;
@@ -26,7 +34,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("package failed its bundled self-test".into());
     }
     let m = package.manifest();
-    println!("loaded '{}' ({:?}), inputs: {}", m.name, m.task, m.schema.features.join(", "));
+    println!(
+        "loaded '{}' ({:?}), inputs: {}",
+        m.name,
+        m.task,
+        m.schema.features.join(", ")
+    );
 
     // 2. One predictor per thread; each owns its preallocated arena.
     let mut predictor: Predictor = package.predictor(1)?;

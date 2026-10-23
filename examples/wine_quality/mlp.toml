@@ -1,0 +1,29 @@
+# UCI Wine Quality (red), CC BY 4.0. Regression of the sensory quality score (0-10).
+# Hyperparameters chosen on the validation split only (see docs/walkthroughs.md).
+name = "wine-quality-mlp"
+seed = 2026
+
+[data]
+train = "../../datasets/wine_red/train.csv"
+valid = "../../datasets/wine_red/valid.csv"
+features = ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide", "density", "pH", "sulphates", "alcohol"]
+label = "quality"
+task = "regression"
+missing = "reject"
+extra_columns = "reject"
+shuffle_buffer = 2048
+
+[model]
+hidden = [32, 16]
+activation = "relu"
+
+[training]
+epochs = 45
+batch_size = 32
+optimizer = { kind = "adamw", lr = 0.001, weight_decay = 0.05 }
+tensor_budget = "2MiB"
+
+[deploy]
+max_batch = 256
+sessions = 2
+tensor_budget = "2MiB"
