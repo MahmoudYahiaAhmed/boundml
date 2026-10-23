@@ -239,3 +239,44 @@ fn oversized_or_unterminated_records_fail_while_reading() {
         "no partial outputs left"
     );
 }
+
+/// Review regression: an input named like the split's fixed temporary file was
+/// deleted while `split` reported success.
+#[test]
+fn split_input_named_like_a_temporary_file_survives() {
+    let d = tempfile::tempdir().unwrap();
+    let content = "a,b,y\n1,2,no\n3,4,yes\n5,6,no\n";
+    let p = write(&d, ".train.csv.partial", content);
+    let r = split_csv(&p, d.path(), 0.2, 0.2, 1);
+    assert_eq!(
+        std::fs::read_to_string(&p).ok().as_deref(),
+        Some(content),
+        "input lost; result {r:?}"
+    );
+}
+
+#[test]
+fn split_replaces_existing_outputs_and_leaves_no_temporary_files() {
+    let d = tempfile::tempdir().unwrap();
+    let input = write(&d, "all.csv", "a,b,y\n1,2,no\n3,4,yes\n");
+    let out = d.path().join("out");
+    std::fs::create_dir_all(&out).unwrap();
+    std::fs::write(out.join("train.csv"), "stale").unwrap();
+    std::fs::write(out.join(".train.csv.partial"), "unrelated").unwrap();
+    split_csv(&input, &out, 0.0, 0.0, 1).unwrap();
+    assert!(
+        std::fs::read_to_string(out.join("train.csv"))
+            .unwrap()
+            .starts_with("a,b,y")
+    );
+    assert_eq!(
+        std::fs::read_to_string(out.join(".train.csv.partial")).unwrap(),
+        "unrelated"
+    );
+    let tmp: Vec<_> = std::fs::read_dir(&out)
+        .unwrap()
+        .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
+        .filter(|n| n.ends_with(".tmp"))
+        .collect();
+    assert!(tmp.is_empty(), "{tmp:?}");
+}

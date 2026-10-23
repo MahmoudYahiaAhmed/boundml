@@ -32,8 +32,10 @@ position. Validation and evaluation read in file order.
 
 **Splitting.** `boundml split` assigns each row to train/valid/test independently
 with a seeded RNG (streaming, approximate proportions, deterministic). Outputs are
-written to temporary files and renamed only on success, and an `--out` directory that
-would overwrite the input file is refused.
+written to exclusively created, uniquely named temporary files in the output directory
+and renamed only on success; on failure only those temporary files are removed. An
+`--out` directory that would overwrite the input file is refused. `boundml predict`
+follows the same rule and refuses `--out` equal to `--data`.
 
 **Outside the package.** Anything the package does not represent must be applied
 identically by the caller: derived features, unit conversions, categorical

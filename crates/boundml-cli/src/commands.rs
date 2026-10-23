@@ -417,15 +417,20 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize, preview: usize
     let mut pred = p.predictor(batch).map_err(s)?;
     let m = p.manifest();
     let mut src = CsvSource::open(data, &m.schema, false).map_err(s)?;
-    // Write to a sibling temp file and rename on success, so a failure never leaves
-    // a truncated prediction file behind.
-    let tmp = {
-        let mut t = out.as_os_str().to_owned();
-        t.push(".partial");
-        std::path::PathBuf::from(t)
-    };
-    let mut w = csv::Writer::from_path(&tmp)
-        .map_err(|e| format!("BML-A001 I/O error on {}: {e}", tmp.display()))?;
+    // Refuse to overwrite the input itself; then write to an exclusively reserved,
+    // uniquely named temporary file next to `out` and rename only on success. A
+    // failure removes just that temporary file and never touches the input or any
+    // pre-existing file.
+    if boundml_data::same_file(out, data) {
+        return Err(format!(
+            "BML-A001 I/O error on {}: --out must not be the input file",
+            out.display()
+        ));
+    }
+    let mut reserved = boundml_data::ReservedFile::next_to(out)
+        .map_err(|e| format!("BML-A001 I/O error on {}: {e}", out.display()))?;
+    let tmp = reserved.path().to_path_buf();
+    let mut w = csv::Writer::from_writer(reserved.take_file());
     let names = m.output_names();
     let mut header = vec!["line".to_string()];
     header.extend(names.iter().cloned());
@@ -473,7 +478,8 @@ pub fn predict(pkg: &Path, data: &Path, out: &Path, batch: usize, preview: usize
     w.flush()
         .map_err(|e| format!("BML-A001 I/O error on {}: {e}", tmp.display()))?;
     drop(w);
-    std::fs::rename(&tmp, out)
+    reserved
+        .commit(out)
         .map_err(|e| format!("BML-A001 I/O error on {}: {e}", out.display()))?;
     let secs = started.elapsed().as_secs_f64();
     let mut text = format!(
