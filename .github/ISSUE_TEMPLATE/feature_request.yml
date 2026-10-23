@@ -1,0 +1,25 @@
+name: Feature request
+description: Something you need that BoundML does not do yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workload and the step where BoundML falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do today instead?
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would solve it?
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I read the supported/not supported table in docs/package-format.md

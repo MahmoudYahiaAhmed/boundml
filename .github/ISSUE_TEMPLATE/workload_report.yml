@@ -1,0 +1,39 @@
+name: Workload report
+description: Tell us how BoundML worked (or did not) on a real workload.
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: This is the most useful feedback for an early release. Describe your data shape, not the data itself.
+  - type: textarea
+    id: workload
+    attributes:
+      label: Workload
+      description: Application type, number of rows and features, task, how predictions are used.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current workflow
+      description: How do you train, ship and update this model today?
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Did BoundML work for it?
+      options: [Yes, in production or about to be, Yes for evaluation only, Partly, No]
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blockers or missing features
+  - type: textarea
+    id: value
+    attributes:
+      label: Which parts helped, if any?
+      description: e.g. bundled preprocessing, schema checks, memory plan, compare, embedding API.
+  - type: input
+    id: effort
+    attributes:
+      label: Roughly how long did integration take?

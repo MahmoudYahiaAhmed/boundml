@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+body { width:1280px; height:320px; overflow:hidden; }
+.wrap { position:relative; width:1280px; height:320px; padding:0 72px; display:flex; align-items:center; gap:44px;
+  background: radial-gradient(ellipse 60% 120% at 85% 50%, #1d2d2a 0%, var(--bg) 60%); border-bottom:3px solid var(--mint); }
+svg.mark { width:168px; height:168px; flex:none; }
+h1 { font-size:84px; font-weight:700; letter-spacing:-2px; line-height:1; }
+h1 span { color: var(--mint); }
+.tag { font-size:31px; font-weight:600; margin-top:14px; }
+.sub { font-size:21px; color:var(--muted); margin-top:12px; }
+.grid { position:absolute; right:0; top:0; width:420px; height:100%; opacity:.18;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 28px 28px; }
+</style></head><body><div class="wrap"><div class="grid"></div>
+<svg class="mark" viewBox="0 0 128 128">  <rect width="128" height="128" rx="28" fill="#16191D"/>
+  <!-- the bound: four corner brackets -->
+  <g fill="none" stroke="#3DD9B3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 44 V22 H44"/><path d="M84 22 H106 V44"/>
+    <path d="M106 84 V106 H84"/><path d="M44 106 H22 V84"/>
+  </g>
+  <!-- dense layers 2 -> 3 -> 1 -->
+  <g stroke="#8FF0D7" stroke-width="2.4" stroke-opacity="0.55">
+    <path d="M42 50 L64 40 M42 50 L64 64 M42 50 L64 88 M42 78 L64 40 M42 78 L64 64 M42 78 L64 88"/>
+    <path d="M64 40 L86 64 M64 64 L86 64 M64 88 L86 64"/>
+  </g>
+  <g fill="#E6EDF3">
+    <circle cx="42" cy="50" r="6"/><circle cx="42" cy="78" r="6"/>
+    <circle cx="64" cy="40" r="6"/><circle cx="64" cy="64" r="6"/><circle cx="64" cy="88" r="6"/>
+  </g>
+  <circle cx="86" cy="64" r="7.5" fill="#3DD9B3"/></svg>
+<div><h1>Bound<span>ML</span></h1>
+<div class="tag">Small models. Simple deployment. Native Rust.</div>
+<div class="sub">Train from CSV, package preprocessing and weights together, and run predictions inside your Rust application.</div></div>
+</div></body></html>

@@ -1,0 +1,77 @@
+**BoundML 0.1.0 — early release.** Small models. Simple deployment. Native Rust.
+
+BoundML trains small dense models from CSV and ships them as one checked package:
+feature schema, fitted preprocessing, weights, self-tests and a planned tensor-memory
+budget. You load that package inside your Rust application and predict, with no
+Python, ML framework or network.
+
+## What you can do with it
+
+- `boundml init demo` → `train` → `evaluate` → `pack` → `predict`: a first prediction
+  in about {{FIRST_PREDICTION}} from a prebuilt archive (measured below).
+- Embed packages in Rust with `boundml-artifact::Predictor`. Features are given by name,
+  the fitted preprocessing is applied for you, and each call allocates nothing.
+- Know the planned tensor memory before anything is allocated (`boundml plan`); budgets
+  are enforced on load.
+- Gate model updates in CI with `boundml compare current candidate --data holdout.csv`
+  (exit code 6 on breaking changes).
+- Serve locally over HTTP with request, queue and worker limits (`boundml serve`).
+- Import dense PyTorch / Keras sequential models, checked against the source
+  framework's outputs.
+
+Supported models: linear regression, logistic/softmax regression and MLPs
+(ReLU/Tanh/Sigmoid) for regression, binary and multiclass tasks on numeric features.
+CPU only.
+
+## Install
+
+Download the archive for your platform below, check it against `SHA256SUMS`, extract
+it and run `boundml --version`. PowerShell and bash steps, plus updating and removal:
+[docs/install.md](../docs/install.md). From source:
+`cargo install --path crates/boundml-cli --locked`. Not yet on crates.io.
+
+| Archive | Status |
+|---|---|
+| `boundml-0.1.0-x86_64-pc-windows-msvc.zip` | built and smoke-tested locally; the smoke test extracts the archive into a path with spaces and runs the quickstart |
+| `boundml-0.1.0-x86_64-unknown-linux-gnu.tar.gz` | built by the release workflow; status as shown by that workflow run |
+| `boundml-0.1.0-aarch64-apple-darwin.tar.gz` | built by the release workflow; status as shown by that workflow run |
+
+## Verified results (one Windows machine)
+
+- Gradients match finite differences and PyTorch float64. SGD/AdamW updates match
+  PyTorch.
+- Bitwise-identical parameters after interrupted-and-resumed training.
+- Bitwise-identical predictions across the Rust API, the CLI and HTTP.
+- No heap allocation in prediction or training steps after setup.
+- PyTorch and Keras dense models import within {{MIGRATION_MAX}} max output
+  difference.
+- Two UCI datasets: models beat constant baselines. The MLP does **not** beat a linear
+  model on either one.
+- Against tract, ONNX Runtime and PyTorch on the same weights:
+  - BoundML is ahead on start-up ({{COLD_B}}), process memory ({{MEM_B}}) and
+    single-row latency ({{LAT_B}}).
+  - **tract is {{TRACT_X}}× faster on 256-row batches.**
+  - Full data: [docs/benchmarks.md](../docs/benchmarks.md).
+- Five-minute stress test with concurrent sessions, reloads and train/resume cycles:
+  no drift, flat memory.
+
+## Known limitations
+
+- Single-threaded scalar kernels.
+- Only Windows x86_64 has been built and tested by a person.
+- `boundml train` re-parses the CSV every epoch (slow on small data).
+- No categorical features or trees.
+- Checksums detect corruption but do not authenticate.
+- The HTTP server has no auth or TLS.
+- The memory bound covers planned tensor storage, not the whole process.
+- No external users have evaluated it yet.
+
+## Compatibility
+
+- Package format v1. Packages written by 0.1.x load in every 0.1.x runtime.
+- Newer formats are refused with `BML-A003`.
+- CLI flags and the Rust API may change in 0.x minor releases. Changes will be listed
+  under **Breaking** in the changelog.
+
+Feedback from real workloads is the most useful thing right now. Please open a
+*Workload report* issue.

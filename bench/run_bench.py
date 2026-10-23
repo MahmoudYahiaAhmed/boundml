@@ -2,6 +2,7 @@
 
 Prerequisites (repository root):
     cargo build --release --workspace
+    cargo build --release --manifest-path bench/baselines/Cargo.toml
     python -I datasets/prepare.py --download   # then boundml split, see docs/walkthroughs.md
     boundml train examples/<dataset>/mlp.toml --checkpoint out/<dataset>/mlp/ckpt
 Run:
@@ -26,6 +27,7 @@ import psutil
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXE = ".exe" if os.name == "nt" else ""
 REL = ROOT / "target" / "release"
+BASE = ROOT / "bench" / "baselines" / "target" / "release"
 OUT = ROOT / "out" / "bench"
 PY = sys.executable
 RUNS = int(sys.argv[sys.argv.index("--runs") + 1]) if "--runs" in sys.argv else 5
@@ -100,19 +102,55 @@ def dir_size(p: pathlib.Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
 
+def run_measured(cmd: list[str]) -> tuple[str, int]:
+    """Run to completion; return stdout and the peak working set seen while polling.
+
+    stdout is drained by a thread so a large output cannot fill the pipe and block
+    the child while we poll it.
+    """
+    import threading
+
+    proc = psutil.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, cwd=ROOT)
+    chunks: list[str] = []
+    reader = threading.Thread(target=lambda: chunks.append(proc.stdout.read()), daemon=True)
+    reader.start()
+    peak = 0
+    while proc.poll() is None:
+        try:
+            peak = max(peak, peak_memory(proc))
+        except psutil.Error:
+            break
+        time.sleep(0.005)
+    proc.wait()
+    reader.join()
+    if proc.returncode != 0:
+        raise RuntimeError(f"{cmd} exited {proc.returncode}")
+    return "".join(chunks), peak
+
+
 def train_bench(cfg: str, test: str) -> dict:
-    res: dict = {"boundml": [], "pytorch_default": [], "pytorch_1_thread": []}
+    keys = ("boundml_cli", "boundml_core_in_memory", "burn_ndarray", "pytorch_default", "pytorch_1_thread")
+    res: dict = {k: [] for k in keys}
     for i in range(RUNS):
         ck = OUT / f"train-ck-{i}"
         shutil.rmtree(ck, ignore_errors=True)
-        r = subprocess.run([str(REL / f"boundml{EXE}"), "--json", "train", cfg, "--checkpoint", str(ck), "--quiet"], capture_output=True, text=True, cwd=ROOT, check=True)
-        secs = json.loads(r.stdout)["result"]["seconds"]
+        shutil.rmtree(pathlib.Path(str(ck) + ".prev"), ignore_errors=True)
+        out, peak = run_measured([str(REL / f"boundml{EXE}"), "--json", "train", cfg, "--checkpoint", str(ck), "--quiet"])
+        secs = json.loads(out)["result"]["seconds"]
         ev = subprocess.run([str(REL / f"boundml{EXE}"), "--json", "evaluate", str(ck), "--data", test], capture_output=True, text=True, cwd=ROOT, check=True)
         metrics = json.loads(ev.stdout)["result"]["model"]
-        res["boundml"].append({"train_seconds": secs, "test": {k: metrics[k] for k in ("rmse", "accuracy") if k in metrics}})
-        for key, threads in (("pytorch_default", "default"), ("pytorch_1_thread", "1")):
-            r = subprocess.run([PY, "bench/py_train.py", cfg, test, threads], capture_output=True, text=True, cwd=ROOT, check=True)
-            res[key].append(json.loads(r.stdout.strip().splitlines()[-1]))
+        res["boundml_cli"].append({"train_seconds": secs, "peak_working_set_bytes": peak,
+                                   "test": {k: metrics[k] for k in ("rmse", "accuracy") if k in metrics}})
+        for key, cmd in (
+            ("boundml_core_in_memory", [str(REL / f"train_core{EXE}"), cfg, test]),
+            ("burn_ndarray", [str(BASE / f"train_burn{EXE}"), cfg, test]),
+            ("pytorch_default", [PY, "bench/py_train.py", cfg, test, "default"]),
+            ("pytorch_1_thread", [PY, "bench/py_train.py", cfg, test, "1"]),
+        ):
+            out, peak = run_measured(cmd)
+            rec = json.loads(out.strip().splitlines()[-1])
+            rec["peak_working_set_bytes"] = peak
+            res[key].append(rec)
         shutil.rmtree(ck, ignore_errors=True)
         shutil.rmtree(pathlib.Path(str(ck) + ".prev"), ignore_errors=True)
     summary = {}
@@ -120,7 +158,8 @@ def train_bench(cfg: str, test: str) -> dict:
         metric = next(iter(v[0]["test"]))
         summary[k] = {"median_train_seconds": statistics.median(x["train_seconds"] for x in v), "metric": metric,
                       "median_test_metric": statistics.median(x["test"][metric] for x in v),
-                      "all_test_metric": [x["test"][metric] for x in v]}
+                      "all_test_metric": [x["test"][metric] for x in v],
+                      "median_peak_working_set_bytes": statistics.median(x["peak_working_set_bytes"] for x in v)}
     return summary
 
 
@@ -140,7 +179,8 @@ def main() -> None:
         "rustc": subprocess.run(["rustc", "--version"], capture_output=True, text=True).stdout.strip(),
         "boundml_build": "cargo --release (lto=thin, codegen-units=1), default target CPU",
         "torch_threads_default": torch.get_num_threads(),
-        "tract_onnx": "0.23.9 (Cargo.lock), concrete-shape optimized plans, single thread",
+        "tract_onnx": "0.23.9 (bench/baselines/Cargo.lock), concrete-shape optimized plans, single thread",
+        "burn": "0.21.0 ndarray backend (bench/baselines/Cargo.lock)",
         "python_interpreter_startup_s": python_startup(),
         "runs_per_measurement": RUNS,
     }
@@ -152,7 +192,7 @@ def main() -> None:
         export_onnx(pkg, onnx)
         inf = {
             "boundml": median_runs([str(REL / f"infer{EXE}"), str(pkg), test]),
-            "tract": median_runs([str(REL / f"infer_tract{EXE}"), str(onnx), str(pkg), test]),
+            "tract": median_runs([str(BASE / f"infer_tract{EXE}"), str(onnx), str(pkg), test]),
             "pytorch_eager": median_runs([PY, "bench/py_infer.py", "torch", str(pkg), test]),
             "onnxruntime": median_runs([PY, "bench/py_infer.py", "ort", str(pkg), test, str(onnx)]),
         }

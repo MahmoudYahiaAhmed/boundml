@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Please do not include private data; a small synthetic CSV that reproduces the problem is ideal.
+  - type: textarea
+    id: version
+    attributes:
+      label: "`boundml version` output"
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install BoundML?
+      options: [Release archive, cargo install from a checkout, Built in the workspace, Other]
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and CPU
+      placeholder: e.g. Ubuntu 24.04 x86_64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Commands you ran and their full output
+      description: Include the BML- error code if there is one. `--json` output helps.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true

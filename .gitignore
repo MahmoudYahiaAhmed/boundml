@@ -1,5 +1,14 @@
-/target
-/out
-/datasets/raw
-*.tmp
+# Build outputs (any workspace, including bench/baselines)
+target/
+# Local run outputs, release archives, downloaded raw datasets
+/out/
+/dist/
+/datasets/raw/
+# Python
 __pycache__/
+*.pyc
+.venv/
+venv/
+# Partial files written by BoundML before an atomic rename
+*.partial
+*.tmp

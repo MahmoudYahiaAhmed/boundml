@@ -1,0 +1,5 @@
+:root { --bg:#16191D; --panel:#1E2227; --line:#2D333B; --text:#E6EDF3; --muted:#9AA4AE; --mint:#3DD9B3; --mint2:#8FF0D7; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif; }
+.mono { font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace; }
+.mint { color: var(--mint); }

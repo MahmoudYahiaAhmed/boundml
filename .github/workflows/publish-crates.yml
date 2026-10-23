@@ -1,0 +1,34 @@
+# Manual crates.io publication, kept separate from CI and release builds.
+# Requires a CARGO_REGISTRY_TOKEN secret on the protected "crates-io" environment.
+# Order matters: each crate depends on the previous ones being on crates.io.
+name: publish-crates
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only run cargo publish --dry-run"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+      - name: Publish in dependency order
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          for c in boundml-core boundml-data boundml-artifact boundml-train boundml-cli; do
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              cargo publish --locked --dry-run -p "$c"
+            else
+              cargo publish --locked -p "$c"
+            fi
+          done

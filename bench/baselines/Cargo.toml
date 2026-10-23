@@ -1,0 +1,24 @@
+# Native-runtime and Rust-framework baselines (tract, Burn). Kept out of the main
+# workspace so their large dependency trees never enter the product's Cargo.lock.
+# Build: cargo build --release --manifest-path bench/baselines/Cargo.toml
+[workspace]
+
+[package]
+name = "boundml-baselines"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+boundml-core = { path = "../../crates/boundml-core" }
+boundml-data = { path = "../../crates/boundml-data" }
+boundml-train = { path = "../../crates/boundml-train" }
+burn = { version = "0.21.0", default-features = false, features = ["std", "ndarray", "autodiff"] }
+csv = "1.4.0"
+serde_json = "1.0.154"
+tract-onnx = "0.23.9"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

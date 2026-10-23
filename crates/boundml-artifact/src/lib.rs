@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+//!
 //! BoundML artifacts: versioned inference packages, the embeddable [`Predictor`],
 //! package comparison, and file utilities used by checkpoints.
 //!

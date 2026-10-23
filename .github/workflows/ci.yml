@@ -4,7 +4,15 @@ name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,6 +33,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo doc --workspace --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
       - run: cargo build --release --workspace --locked
       - name: Walkthrough smoke test
         shell: bash
@@ -36,6 +46,21 @@ jobs:
           $B pack out/smoke/ckpt --out out/smoke/model.boundml
           $B verify out/smoke/model.boundml
           $B predict out/smoke/model.boundml --data out/smoke/data/test.csv --out out/smoke/pred.csv
+
+  package-smoke:
+    # Builds the release archive for this platform and tests the extracted archive.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/release.py --out dist
 
   migration:
     runs-on: ubuntu-latest

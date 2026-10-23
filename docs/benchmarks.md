@@ -1,126 +1,216 @@
 # Benchmarks
 
-Targets were committed before any measurement (`docs/benchmark-targets.md`,
-commit "docs: pre-declare benchmark targets before measuring"). Raw results:
-`docs/results/bench.json`. Re-run: `python bench/run_bench.py --runs 5`.
+Every number on this page comes from `docs/results/bench.json`, produced by the
+commands below, and the tables are generated from it by `bench/report.py`. The
+original targets were committed before the first measurement
+([benchmark-targets.md](benchmark-targets.md)). The native-runtime (tract) and Burn
+comparisons were added after the pre-launch audit and have no pre-declared
+threshold.
 
-## Environment
+## Reproduce
+
+```bash
+cargo build --release --workspace
+cargo build --release --manifest-path bench/baselines/Cargo.toml
+python -I datasets/prepare.py --download
+boundml split datasets/breast_cancer/all.csv --out datasets/breast_cancer --valid 0.15 --test 0.2 --seed 2026
+boundml split datasets/wine_red/all.csv --out datasets/wine_red --valid 0.15 --test 0.2 --seed 2026
+boundml train examples/breast_cancer/mlp.toml --checkpoint out/breast_cancer/mlp/ckpt --quiet
+boundml train examples/wine_quality/mlp.toml --checkpoint out/wine_quality/mlp/ckpt --quiet
+python bench/run_bench.py --runs 5
+python bench/report.py
+```
+
+(The splits and `prepare.py` are only needed if `datasets/` was removed; the split
+CSVs are in the repository.) Python baselines need `torch`, `onnxruntime`,
+`safetensors`, `numpy` and `psutil`.
+
+## Setup
 
 | | |
 |---|---|
-| Machine | AMD Ryzen 7 8700F (8 cores / 16 threads), 32 GB RAM, CPU only |
+| Hardware | AMD Ryzen 7 8700F, 8 cores / 16 threads, 32 GB RAM; CPU only; the single machine available |
 | OS | Windows 11 Pro 10.0.26200 |
 | BoundML | rustc 1.94.0, `--release`, `lto = "thin"`, `codegen-units = 1`, default target CPU (no `-C target-cpu=native`), single-threaded kernels |
-| PyTorch | 2.12.1+cpu, eager, `torch.inference_mode()`, default 8 threads (training also measured with 1) |
-| ONNX Runtime | 1.20.1 Python API, CPUExecutionProvider, default session options; model exported from the same weights with `torch.onnx.export` (opset default, dynamic batch) |
+| tract | `tract-onnx` 0.23.9, in-process Rust, plans optimized for concrete shapes (batch 1 and batch 256), one thread |
+| Burn | 0.21.0, ndarray backend + autodiff |
+| ONNX Runtime | 1.20.1, Python API, CPUExecutionProvider, default session options (multi-threaded) |
+| PyTorch | 2.12.1+cpu eager, `inference_mode`, default 8 threads (training also measured with 1) |
 | Python | 3.13.9 |
-| Runs | 5 per measurement, median reported |
+| Models | breast cancer: MLP 30 → 16 → 1 (ReLU, sigmoid output), 529 parameters; wine quality: MLP 11 → 32 → 16 → 1 (ReLU), 929 parameters; f32 |
+| Data | UCI test splits (124 and 328 rows); a fixed 256-row batch for throughput is built by repeating test rows |
 
-All three runtimes execute **the same weights**: the PyTorch and ONNX models are
-rebuilt from the BoundML package (`bench/pymodel.py`). Output checksums over the same
-batch agree to 4+ decimal places (`checksum` fields in `bench.json`).
+All runtimes execute **the same weights**. The ONNX and PyTorch models are rebuilt
+from the BoundML package (`bench/pymodel.py`), and output checksums agree to 4+
+decimal places.
 
-## Methodology
+## What each column measures
 
-- **Workload**: the MLPs from `examples/breast_cancer/mlp.toml` (30 → 16 → 1,
-  sigmoid) and `examples/wine_quality/mlp.toml` (11 → 32 → 16 → 1), f32.
-- **Inputs include preprocessing**: every timed call goes from raw feature values to
-  model outputs. BoundML applies its packaged standardization; the Python workers apply
-  the same mean/std with NumPy inside the timed region.
-- **Cold start**: the driver measures wall time from `Popen` to the worker printing
-  `FIRST`. That interval includes process creation, interpreter/runtime start-up,
-  imports, package/model loading (BoundML: integrity checks + self-test), reading the
-  test CSV, and one prediction.
-- **Warm latency**: 200 warm-up calls, then 5000 single-row calls, each timed
-  individually (`Instant` / `perf_counter_ns`). The Python numbers include Python
-  call overhead. They measure what a Python deployment pays, **not** kernel speed.
-- **Throughput**: one fixed 256-row batch (test rows repeated), 20 warm-up calls, then
-  as many calls as fit in 2 s.
-- **Peak memory**: the process's peak working set (`psutil` `peak_wset`), read
-  after the measurements while the worker waits on stdin.
-- **Training**: BoundML time is the `seconds` reported by `boundml train` (the loop
-  only, excluding process start). It **includes** streaming the CSV from disk every
-  epoch and the per-epoch validation pass. The PyTorch baseline (`bench/py_train.py`)
-  runs the same architecture, initialization family, output-bias initialization,
-  AdamW groups, batch size and epochs. Its data is held in memory as tensors and it
-  does **no** per-epoch validation, so its loop does less work.
+- **Process start → first prediction**: wall time from `Popen` until the worker
+  prints `FIRST`. This includes OS process creation, interpreter start-up and imports
+  (Python), model loading, reading the test CSV, and one prediction.
+- **Framework import** (Python only): `import torch` / `import onnxruntime`, measured
+  inside the worker. Interpreter start-up alone is reported once, above the tables.
+- **Model load**: in-process time to load and prepare the model. For BoundML that
+  covers integrity hashes, strict validation, memory-plan recomputation, the arena
+  allocation and the bundled self-test. For tract it is ONNX parsing plus optimizing
+  two plans; for Python, building the module or session.
+- **Preprocessing alone**: standardizing one raw row with the fitted statistics
+  (BoundML `Preprocessor::apply`; NumPy for Python; equivalent Rust glue for tract).
+- **Core inference**: pre-standardized input → output.
+- **Preprocess + infer**: raw values → output.
+- **Peak process working set**: whole-process peak (`psutil` `peak_wset`), read after
+  all measurements. It includes the runtime, the loaded CSV and everything else.
+- **Planned tensor bytes** (BoundML only): the planner's total for one session at the
+  package's `max_batch` (weights + arena). This is the quantity the budget bounds. It
+  is a small part of the whole process.
+- Training time covers the training loop only. `boundml train` streams and parses the
+  CSV every epoch and evaluates the validation file after each epoch; the in-memory
+  rows (BoundML core, Burn, PyTorch) hold standardized tensors in memory and skip
+  validation.
 
 ## Results
 
-### Inference (median of 5)
+<!-- BENCH:BEGIN -->
+Measured 2026-10-23 on AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD (16 logical CPUs), Windows-11-10.0.26200-SP0; 5 runs per measurement, medians shown. Python interpreter start-up (`python -I -c pass`): **47.9 ms**.
 
-| Dataset | Runtime | Cold start | Peak working set | p50 / p95 / p99 latency (1 row) | Batch-256 throughput |
+### Breast cancer (MLP 30-16-1, sigmoid output)
+
+**Start-up and memory**
+
+| Runtime | Process start → first prediction | Framework import | Model load | Peak process working set | Planned tensor bytes |
 |---|---|---|---|---|---|
-| Breast cancer | **BoundML** | **0.011 s** | **6.1 MiB** | **0.3 / 0.4 / 0.4 µs** | 6.96 M rows/s |
-| | PyTorch eager | 1.555 s | 202.2 MiB | 26.9 / 38.2 / 50.4 µs | 4.19 M rows/s |
-| | ONNX Runtime | 0.225 s | 50.7 MiB | 10.4 / 13.6 / 17.6 µs | **9.87 M rows/s** |
-| Wine quality | **BoundML** | **0.011 s** | **5.9 MiB** | **0.4 / 0.5 / 0.6 µs** | 6.04 M rows/s |
-| | PyTorch eager | 1.641 s | 202.0 MiB | 31.4 / 39.5 / 60.7 µs | 3.31 M rows/s |
-| | ONNX Runtime | 0.229 s | 50.8 MiB | 10.8 / 13.6 / 17.2 µs | **9.13 M rows/s** |
+| BoundML | 9.1 ms | — | 0.6 ms | 6.3 MiB | 49,156 B |
+| tract (native Rust) | 11.2 ms | — | 2.6 ms | 9.5 MiB | not reported |
+| PyTorch eager (Python) | 1.49 s | 1.44 s | 3.5 ms | 202.4 MiB | not reported |
+| ONNX Runtime (Python API) | 211.9 ms | 150.2 ms | 9.3 ms | 51.4 MiB | not reported |
 
-### Training (median of 5; test metric on the held-out split)
+**Warm inference** (µs per call, p50 / p95 / p99; throughput in rows/s for one 256-row batch)
 
-| Dataset | Runtime | Train time | Test metric |
+| Runtime | Threads | Preprocessing alone (1 row) | Core inference, 1 row | Preprocess + infer, 1 row | Core, batch 256 | Preprocess + infer, batch 256 |
+|---|---|---|---|---|---|---|
+| BoundML | 1 | 0.0 / 0.1 / 0.1 | 0.3 / 0.3 / 0.4 | 0.3 / 0.4 / 0.4 | 8.85 M | 7.06 M |
+| tract (native Rust) | 1 | 0.1 / 0.1 / 0.1 | 1.7 / 1.9 / 2.0 | 1.7 / 1.8 / 2.5 | 28.82 M | 15.60 M |
+| PyTorch eager (Python) | 8 | 1.8 / 1.8 / 1.9 | 23.5 / 27.0 / 47.3 | 27.5 / 32.0 / 51.6 | 6.04 M | 4.12 M |
+| ONNX Runtime (Python API) | ort-default | 2.6 / 3.4 / 3.6 | 7.9 / 8.2 / 11.9 | 9.9 / 11.0 / 15.7 | 17.57 M | 10.02 M |
+
+**Training** (same architecture, optimizer settings, batch size and epochs; test split)
+
+| Trainer | Train time | Test metric | Peak process working set |
 |---|---|---|---|
-| Breast cancer (80 epochs, batch 32) | BoundML | 0.430 s | accuracy 0.9597 |
-| | PyTorch, 8 threads | 0.499 s | accuracy 0.9597 |
-| | PyTorch, 1 thread | 0.383 s | accuracy 0.9597 |
-| Wine quality (45 epochs, batch 32) | BoundML | 0.244 s | RMSE 0.6635 |
-| | PyTorch, 8 threads | 0.960 s | RMSE 0.6616 |
-| | PyTorch, 1 thread | 0.743 s | RMSE 0.6616 |
+| `boundml train` (CSV streamed every epoch + validation) | 387.2 ms | accuracy 0.9597 | 7.5 MiB |
+| BoundML core, in-memory | 9.1 ms | accuracy 0.9597 | 5.7 MiB |
+| Burn 0.21 ndarray | 48.6 ms | accuracy 0.9597 | 6.9 MiB |
+| PyTorch, 8 threads | 463.6 ms | accuracy 0.9597 | 273.4 MiB |
+| PyTorch, 1 thread | 369.9 ms | accuracy 0.9597 | 273.5 MiB |
 
-Every run gave the same result: identical metrics across the 5 runs for each
-runtime, because both runtimes are seeded.
+Sizes: `boundml` binary 4.0 MB; package 28.0 KB (includes schema, preprocessing, self-tests); ONNX file 2.5 KB; installed PyTorch 516 MB, ONNX Runtime 37 MB.
 
-### Sizes
+### Wine quality (MLP 11-32-16-1, regression)
 
-| Item | Bytes |
-|---|---|
-| `boundml` CLI binary (train + serve + all commands, Windows x64) | 3.9 MB |
-| Package (breast cancer / wine) incl. manifest, schema, preprocessing, self-tests | 28 KB / 17 KB |
-| ONNX model file (weights + graph only) | 2.5 KB / 4.4 KB |
-| PyTorch installed package | 516 MB |
-| ONNX Runtime installed package | 37 MB |
+**Start-up and memory**
 
-## Targets
+| Runtime | Process start → first prediction | Framework import | Model load | Peak process working set | Planned tensor bytes |
+|---|---|---|---|---|---|
+| BoundML | 8.8 ms | — | 0.5 ms | 6.2 MiB | 69,252 B |
+| tract (native Rust) | 12.3 ms | — | 3.2 ms | 9.8 MiB | not reported |
+| PyTorch eager (Python) | 1.50 s | 1.44 s | 3.5 ms | 202.5 MiB | not reported |
+| ONNX Runtime (Python API) | 192.5 ms | 137.8 ms | 8.9 ms | 51.3 MiB | not reported |
 
-| ID | Threshold | Measured | Verdict |
+**Warm inference** (µs per call, p50 / p95 / p99; throughput in rows/s for one 256-row batch)
+
+| Runtime | Threads | Preprocessing alone (1 row) | Core inference, 1 row | Preprocess + infer, 1 row | Core, batch 256 | Preprocess + infer, batch 256 |
+|---|---|---|---|---|---|---|
+| BoundML | 1 | 0.0 / 0.1 / 0.1 | 0.4 / 0.4 / 0.5 | 0.4 / 0.4 / 0.4 | 6.56 M | 6.14 M |
+| tract (native Rust) | 1 | 0.1 / 0.1 / 0.1 | 3.1 / 3.3 / 4.3 | 3.1 / 3.2 / 3.3 | 16.41 M | 14.25 M |
+| PyTorch eager (Python) | 8 | 1.8 / 1.9 / 1.9 | 28.0 / 31.5 / 42.9 | 31.8 / 37.2 / 53.8 | 4.89 M | 4.01 M |
+| ONNX Runtime (Python API) | ort-default | 1.8 / 1.8 / 1.9 | 8.1 / 8.4 / 12.0 | 10.1 / 10.3 / 12.9 | 13.11 M | 8.91 M |
+
+**Training** (same architecture, optimizer settings, batch size and epochs; test split)
+
+| Trainer | Train time | Test metric | Peak process working set |
 |---|---|---|---|
-| T1 memory | BoundML ≤ 20% of PyTorch peak | 6.1 / 202.2 MiB = 3.0% (5.9 / 202.0 = 2.9%) | **met** |
-| T2 cold start | BoundML ≤ 10% of PyTorch | 0.011 / 1.555 s = 0.7% (0.011 / 1.641 = 0.7%) | **met**; also 20× faster than ORT-via-Python |
-| T3 throughput | BoundML ≥ 50% of ORT batch-256 | 70% (breast cancer), 66% (wine) | **met**, but ORT is faster |
-| T4 training | BoundML ≤ 2× PyTorch 1-thread | 1.12× (slower) on breast cancer; 0.33× (faster) on wine | **met** |
-| T5 quality | ≤ 2 pp accuracy / ≤ 10% RMSE difference | 0.0 pp; RMSE +0.3% | **met** |
-| T6 workflow | qualitative | see below | reported |
+| `boundml train` (CSV streamed every epoch + validation) | 221.9 ms | rmse 0.6635 | 7.3 MiB |
+| BoundML core, in-memory | 28.4 ms | rmse 0.6592 | 5.8 MiB |
+| Burn 0.21 ndarray | 83.9 ms | rmse 0.6225 | 6.9 MiB |
+| PyTorch, 8 threads | 805.9 ms | rmse 0.6616 | 274.0 MiB |
+| PyTorch, 1 thread | 660.0 ms | rmse 0.6616 | 273.5 MiB |
 
-### What the numbers do and do not show
+Sizes: `boundml` binary 4.0 MB; package 17.5 KB (includes schema, preprocessing, self-tests); ONNX file 4.4 KB; installed PyTorch 516 MB, ONNX Runtime 37 MB.
 
-- The memory and cold-start advantages mostly measure *removing the Python
-  interpreter and framework* from deployment. Any compiled runtime would show a
-  similar effect, and the comparison is not against such runtimes. tract, RTen,
-  ExecuTorch and ONNX Runtime's C API were **not** benchmarked, so this is not
-  evidence that BoundML beats native runtimes on memory or start-up.
-- The single-row latency gap is mostly Python call overhead in the baselines.
-- **ONNX Runtime has 1.4–1.5× higher batch throughput.** BoundML's kernels are scalar
-  loops on one thread. It also does not use `target-cpu=native`, packed GEMM or
-  threading. If throughput on large batches matters, this is a real regression.
-- Training: BoundML is slower than single-threaded PyTorch on the 30-feature dataset,
-  even though its timing also covers CSV streaming and validation. It is faster on the
-  wine data, where PyTorch's per-step overhead dominates. These are tiny models; the
-  results say nothing about larger networks, where PyTorch's optimized kernels would
-  dominate.
-- No hardware other than this one Windows machine was measured.
+<!-- BENCH:END -->
 
-### T6: manual steps to ship and update a model (qualitative)
+## Reading the results
 
-| Step | BoundML | Typical PyTorch → ONNX Runtime deployment |
-|---|---|---|
-| Feature order / names enforced at prediction | in package; checked on every request | application code |
-| Fitted preprocessing shipped with model | in package | separate artifact (pickle/JSON) + reimplementation in serving code |
-| Memory bound checked before allocation | `boundml plan` / load-time budget | not available in this workflow |
-| Self-test after copy/deploy | `boundml verify` | write your own |
-| Pre-update compatibility report | `boundml compare --data` | write your own |
-| Commands from data to served model | `validate, train, pack, verify, serve` | training script, export script, preprocessing export, serving code |
+- **Batch throughput: tract and ONNX Runtime win.** On a 256-row batch (model only),
+  tract is about 3.3× faster than BoundML on the 30-feature model and 2.5× faster on
+  the 11-feature model. ONNX Runtime is about 2.0× faster on both. With preprocessing
+  included, tract stays about 2.2–2.3× ahead. Pre-declared target T3 is met as
+  originally defined (raw input including preprocessing), but the model-only ratio
+  sits right at the 50% threshold. BoundML uses straightforward single-threaded loops. It
+  does not use packed GEMM, explicit SIMD, `target-cpu=native` or threads. If you
+  score large batches and throughput dominates, use tract or ONNX Runtime.
+- **Single-row calls, start-up and memory: BoundML is ahead** on these models. One
+  row through preprocessing and the model takes under half a microsecond, with no
+  allocation, and the whole process stays under ~10 MiB. tract's per-call overhead
+  (tensor creation and plan state) dominates at one row. The Python runtimes pay
+  interpreter and framework costs.
+- **Training: BoundML's core is fast on these tiny models, but `boundml train` is
+  not.** Most of the CLI's time goes to re-parsing the CSV every epoch and running
+  validation, a design choice that bounds memory for large files. Caching small
+  datasets in memory is on the [roadmap](../ROADMAP.md).
+- **Quality** is the same across trainers for breast cancer. On wine, Burn reached a
+  lower test RMSE than BoundML and PyTorch with the same hyperparameters, plausibly
+  because of its different default weight initialization and weight decay on biases
+  (see `bench/baselines/src/bin/train_burn.rs`). All are within the run-to-run
+  spread of small-data MLPs. A linear model beats every MLP on this data
+  ([walkthroughs](walkthroughs.md)).
 
-This table compares workflows, not effort measured on real users. No design-partner
-evaluation has been run (`docs/design-partner-plan.md`).
+### Why choose BoundML when another runtime is faster
+
+Pick BoundML when the costs it removes matter more than batch throughput: one Rust
+binary with no Python or ONNX toolchain; preprocessing and the feature schema shipped
+inside the model package and enforced on every call; a memory plan checked against a
+declared budget before allocation; self-tests after every copy or upgrade; and a
+CI-readable `compare` before each model update.
+
+### When another tool is the better fit
+
+- High-throughput batch scoring, or models beyond small MLPs: **tract**, **ONNX
+  Runtime**.
+- Training larger networks, GPUs, or many layer types: **Burn**, **Candle**,
+  **PyTorch**.
+- Trees or classical ML on tabular data: **Linfa**, **SmartCore**, **Aprender**, or
+  XGBoost/LightGBM via their runtimes.
+- PyTorch models on mobile with ahead-of-time memory planning: **ExecuTorch**.
+
+## Pre-declared targets, re-evaluated
+
+The thresholds are unchanged from [benchmark-targets.md](benchmark-targets.md),
+evaluated per dataset with the measurement the target names.
+
+<!-- TARGETS:BEGIN -->
+| ID | Dataset | Threshold | Measured | Verdict |
+|---|---|---|---|---|
+| T1 memory | Breast cancer | ≤ 20% of PyTorch peak | 3.1% | **met** |
+| T2 cold start | Breast cancer | ≤ 10% of PyTorch | 0.6% | **met** |
+| T3 throughput | Breast cancer | ≥ 50% of ORT batch-256, raw input incl. preprocessing (as originally measured) | 70% (model only: 50%) | **met** |
+| T4 training | Breast cancer | `boundml train` ≤ 2× PyTorch 1-thread | 1.05× | **met** |
+| T5 quality | Breast cancer | within 2 pp of PyTorch | +0.0 pp accuracy | **met** |
+| T1 memory | Wine quality | ≤ 20% of PyTorch peak | 3.1% | **met** |
+| T2 cold start | Wine quality | ≤ 10% of PyTorch | 0.6% | **met** |
+| T3 throughput | Wine quality | ≥ 50% of ORT batch-256, raw input incl. preprocessing (as originally measured) | 69% (model only: 50%) | **met** |
+| T4 training | Wine quality | `boundml train` ≤ 2× PyTorch 1-thread | 0.34× | **met** |
+| T5 quality | Wine quality | within 10% RMSE of PyTorch | RMSE 0.6635 vs 0.6616 (+0.3%) | **met** |
+<!-- TARGETS:END -->
+
+## Limits of this evidence
+
+- One Windows machine. No Linux, macOS or ARM measurements.
+- Tiny models: the results say nothing about wide or deep networks, where optimized
+  kernels dominate.
+- The Python baselines include interpreter overhead per call. They represent a Python
+  deployment, not the kernels' speed.
+- The ONNX Runtime C API, RTen and ExecuTorch were not measured.
+- These results do not show that anyone wants this workflow. That needs the
+  evaluations in [design-partner-plan.md](design-partner-plan.md).
