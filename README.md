@@ -22,9 +22,9 @@ features. CPU only. **Early release (0.1.0).** [What is verified](docs/release-s
 
 **Recommended:** download the archive for your platform from this repository's
 [Releases](../../releases) page, check its `.sha256`, extract it, and run `boundml`
-from the extracted folder. It is one executable with no dependencies. Windows x86_64
-archives are smoke-tested; Linux/macOS archives come from the release workflow, which
-has not run yet. Commands for PowerShell and bash, plus update and removal steps, are
+from the extracted folder. It is one executable with no dependencies. Archives for
+Windows x86_64, Linux x86_64 and macOS arm64 are built and smoke-tested in CI; no
+release has been published yet. Commands for PowerShell and bash, plus update and removal steps, are
 in [docs/install.md](docs/install.md).
 
 From a checkout instead (Rust 1.94+): `cargo install --path crates/boundml-cli --locked`.
@@ -220,9 +220,9 @@ storage** for a declared batch size and session count, not whole-process memory.
 | Tasks | regression (1 target), binary, multiclass |
 | Data | numeric CSV columns mapped by name; standardization; mean imputation or reject |
 | Training | SGD (momentum, L2), AdamW, minibatches, exact checkpoint/resume |
-| Run | Python package (`boundml`, Windows wheel tested), Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
+| Run | Python package (`boundml`, wheels tested on Windows, Linux and macOS), Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
 | Import | dense PyTorch `nn.Sequential` / Keras `Sequential`, checked against the source framework ([migrate/](migrate/README.md)) |
-| Platforms | Windows x86_64 built, tested and archive smoke-tested (beta scope); Linux x86_64 source build and tests passed locally under WSL2 only; Linux and macOS arm64 CI and archives configured, **not yet observed** |
+| Platforms | Windows x86_64, Linux x86_64 and macOS arm64: built, tested and archive smoke-tested in CI. No release published yet |
 | Not supported | GPU, CNN/RNN/transformers, trees, categorical features, arbitrary ONNX, wasm/no_std |
 
 ## Documentation

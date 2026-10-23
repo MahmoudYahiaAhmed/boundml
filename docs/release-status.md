@@ -1,8 +1,9 @@
 # Release status — 0.1.0 (early release)
 
-**Label: early release (Windows x86_64 beta).** Complete for its scoped features. The
-release archive is built and smoke-tested for Windows x86_64 only. Not
-production-validated, and no external users yet.
+**Label: early release (beta).** Complete for its scoped features. Built, tested and
+archive smoke-tested on Windows x86_64, Linux x86_64 and macOS arm64 in GitHub
+Actions ([first green run](https://github.com/MahmoudYahiaAhmed/boundml/actions/runs/40032964857), 2026-10-24, commit `fbad6db`), and locally on
+Windows 11. Not production-validated, and no external users yet.
 
 ## Verified locally (Windows 11 x64, Ryzen 7 8700F, Rust 1.94.0)
 
@@ -54,15 +55,29 @@ filesystem where a newly written object's size is not yet visible when rustc map
 it, which fewer parallel jobs and codegen units would make rarer. That is not
 confirmed. Closing it needs a reproduction in that environment.
 
+## Verified in CI (GitHub Actions, default runners)
+
+| Job | ubuntu-latest | windows-latest | macos-latest (arm64) |
+|---|---|---|---|
+| `rust`: fmt, clippy `-D warnings`, `cargo test --workspace`, doc, walkthrough + embed example | pass | pass | pass |
+| `package-smoke`: release archive built, extracted into a path with spaces, first-use steps | pass | pass | pass |
+| `python`: wheel built, installed, 7 tests incl. bitwise parity with the CLI | pass | pass | pass |
+| `migration`: PyTorch and Keras import checked against the source frameworks | pass | | |
+
+The first run found two problems, both fixed before this green run: an overload 503
+lost to a TCP reset on Windows (`c8297a0`, with a regression test), and a runner
+toolchain conflict (`fbad6db`). The reviewer's Linux object-file error did not occur
+on the default Linux runner.
+
 ## Not verified — depends on things outside this machine
 
 | Item | Depends on |
 |---|---|
-| Linux and macOS builds, tests and archives in CI (the default GitHub runners) | first observed run of `ci.yml` / `release.yml` on GitHub; the WSL run above does not stand in for it |
 | The reviewer's Linux object-file error | a reproduction in the reviewer's environment (filesystem type, container runtime, limits); not reproduced locally under disk or memory exhaustion |
-| CI status of any kind | adding a remote and pushing branch `main` (the branch `ci.yml` triggers on); **no workflow has ever run** |
+| Tagged release workflow (`release.yml`) and published archives | pushing a `v*` tag; the same build and smoke test already pass in `ci.yml` |
+| PyPI wheels (`pip install boundml` without a checkout) | publishing; wheels are built and tested in CI but not uploaded |
 | crates.io packages (`cargo install boundml-cli`) | publishing in order core → data → artifact → train → cli; dependent dry-runs fail until their dependencies are on crates.io |
-| Private vulnerability reporting route | enabling it in repository settings |
+| Private vulnerability reporting route | making the repository public, then enabling it in repository settings |
 | Demand / fit for real workloads | 3–5 outside developers deploying their own models |
 | Fuzzing, `cargo audit`/`cargo deny` | not run |
 

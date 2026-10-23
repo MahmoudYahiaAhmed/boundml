@@ -126,4 +126,4 @@ order exactly by replaying the shuffle draws.
 | Training | SGD (momentum, L2), AdamW, minibatch, bounded shuffle, checkpoint/resume | LR schedules, early stopping, distributed, mixed precision |
 | Data | numeric CSV features, numeric or string-class labels, standardization, mean imputation | categorical encoding, text, images, Parquet |
 | Execution | CPU, single-threaded kernels; concurrency via sessions | GPU/Metal/WebGPU, SIMD-specialized or threaded kernels |
-| Platforms | Windows x64 (built and tested locally); Linux/macOS configured in CI, **not observed** | wasm, embedded/no_std, mobile |
+| Platforms | Windows x64, Linux x64, macOS arm64 (tested in CI) | wasm, embedded/no_std, mobile |

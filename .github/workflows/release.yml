@@ -1,6 +1,7 @@
 # Builds release archives on a version tag and creates a DRAFT GitHub release.
 # Nothing is published automatically: a maintainer reviews and publishes the draft.
-# As of 2026-10-23 this workflow has NOT been observed running.
+# Not yet run (it runs on a pushed `v*` tag); the same archive build and smoke test
+# pass in ci.yml's package-smoke job on all three platforms.
 name: release
 
 on:

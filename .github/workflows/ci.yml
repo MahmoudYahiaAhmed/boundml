@@ -1,5 +1,5 @@
-# Configured for Linux, Windows and macOS. As of 2026-10-23 this workflow has NOT
-# been observed running (the repository has not been pushed); see docs/release-status.md.
+# Linux, Windows and macOS. First fully green run: 2026-10-24, commit fbad6db
+# (run 40032964857); see docs/release-status.md.
 name: ci
 
 on:

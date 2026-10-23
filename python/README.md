@@ -6,7 +6,8 @@ code as the `boundml` CLI: no PyTorch, no ONNX toolchain, and predictions identi
 to the CLI, the HTTP server and the Rust API.
 
 Early beta (0.1): dense models (linear, logistic/softmax, MLP) on numeric CSV
-features, CPU only. Wheels are built and tested for Windows x86_64.
+features, CPU only. Wheels are built and tested in CI on Windows x86_64, Linux
+x86_64 and macOS arm64; they are not on PyPI yet.
 
 ## Install
 

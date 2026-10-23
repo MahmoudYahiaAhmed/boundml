@@ -6,9 +6,9 @@ no Python, no ML framework, no network access.
 | Platform | Prebuilt archive | Status |
 |---|---|---|
 | Windows x86_64 (`x86_64-pc-windows-msvc`) | `boundml-<version>-x86_64-pc-windows-msvc.zip` | built and smoke-tested by `scripts/release.py` on Windows 11 |
-| Linux x86_64 (`x86_64-unknown-linux-gnu`) | `boundml-<version>-x86_64-unknown-linux-gnu.tar.gz` | produced by the release workflow; **not yet observed running** |
-| macOS arm64 (`aarch64-apple-darwin`) | `boundml-<version>-aarch64-apple-darwin.tar.gz` | produced by the release workflow; **not yet observed running** |
-| Anything with Rust 1.94+ | build from source (below) | source is portable; only Windows has been built and tested |
+| Linux x86_64 (`x86_64-unknown-linux-gnu`) | `boundml-<version>-x86_64-unknown-linux-gnu.tar.gz` | built and smoke-tested in CI (`package-smoke`); not yet attached to a release |
+| macOS arm64 (`aarch64-apple-darwin`) | `boundml-<version>-aarch64-apple-darwin.tar.gz` | built and smoke-tested in CI (`package-smoke`); not yet attached to a release |
+| Anything with Rust 1.94+ | build from source (below) | tested in CI on Windows x86_64, Linux x86_64 and macOS arm64 |
 
 Archives are attached to this repository's [Releases](../../../releases) page. Each
 archive has a `.sha256` file, and the release has a combined `SHA256SUMS`.
