@@ -4,8 +4,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, "readiness/**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
