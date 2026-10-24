@@ -38,6 +38,17 @@ def mrows(v: float) -> str:
     return f"{v / 1e6:.2f} M"
 
 
+# Commit IDs recorded before the 2026-10-24 history rewrite (which removed local paths
+# from old files and changed no code) and their IDs in the current history.
+REWRITTEN = {"79ef2ab344a4dfb2096af9c57699ac648e25e67e": "31f5e25af649a54035930c0e35deec778fdd932b"}
+
+
+def commit_ref(sha: str) -> str:
+    if sha in REWRITTEN:
+        return f"`{REWRITTEN[sha][:7]}` (recorded as `{sha[:7]}`, its ID before the 2026-10-24 history rewrite)"
+    return f"`{sha[:7]}`"
+
+
 def uncommitted(env: dict) -> str:
     files = [f.split(maxsplit=1)[-1] for f in env.get("git_uncommitted_files", [])]
     return f" (uncommitted changes to: {', '.join(f'`{f}`' for f in files)})" if files else " (clean tree)"
@@ -53,7 +64,7 @@ def render() -> str:
     env = DATA["environment"]
     out = [f"Measured {env['date']} on {env['cpu']} ({env['logical_cpus']} logical CPUs), {env['os']}; "
            f"{env['runs_per_measurement']} runs per measurement; medians shown, with the min–max over runs in "
-           f"parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `{env['git_commit'][:7]}`"
+           f"parentheses where given; one untimed warm-up launch per runtime precedes them. Commit {commit_ref(env['git_commit'])}"
            f"{uncommitted(env)}. "
            f"Python interpreter start-up (`python -I -c pass`): **{ms(env['python_interpreter_startup_s'])}**.", "",
            f"Every reported run's outputs matched BoundML's for every test row at batch sizes "
@@ -79,6 +90,10 @@ def render() -> str:
         copies = "; ".join(f"{NAMES[k]}: {r['unavoidable_copies']}" for k, r in inf.items() if "unavoidable_copies" in r)
         out += ["", f"Input copies inside the timed calls: {copies}."]
         tr = d["training"]
+        rerun = env.get("training_rerun")
+        if rerun:
+            out += ["", f"Training rows re-measured on {rerun['date']} at commit `{rerun['git_commit'][:7]}` "
+                    f"({rerun['runs_per_measurement']} runs, `{rerun['command']}`); inference above is from the run described at the top."]
         out += ["", "**Training** (test split). The controlled rows load one control file written by BoundML's in-memory "
                 "trainer: the same standardized data, initial weights and per-epoch batch order. The CLI row is a separate "
                 "end-to-end measurement with its own streamed batch order.", "",

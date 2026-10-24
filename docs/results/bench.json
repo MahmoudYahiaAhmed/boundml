@@ -37,7 +37,15 @@
    "rule": "every output finite and |a - b| <= atol + rtol * |b|"
   },
   "inference_memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
-  "training_memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+  "training_memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+  "training_rerun": {
+   "date": "2026-10-25",
+   "command": "python bench/run_bench.py --training-only --runs 5",
+   "git_commit": "42abd7309b2ee58b785ab63d3baa58c30093e77e",
+   "git_uncommitted_files": [],
+   "runs_per_measurement": 5,
+   "reason": "PyTorch permutation tensors are now built before its training timer (as in train_core)"
+  }
  },
  "datasets": {
   "breast_cancer": {
@@ -1001,10 +1009,10 @@
      "a6f96f1fd30dc895dbd7193a5877529aad1c81549867a0cbc809ddea72a1b6f2"
     ],
     "boundml_cli": {
-     "median_train_seconds": 0.3666217,
+     "median_train_seconds": 0.6783986,
      "train_seconds_range": [
-      0.356026,
-      0.398124
+      0.5914841,
+      0.729946
      ],
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
@@ -1015,10 +1023,10 @@
       0.9596774193548387,
       0.9596774193548387
      ],
-     "median_peak_memory_bytes": 7077888,
+     "median_peak_memory_bytes": 7127040,
      "peak_memory_range": [
-      7049216,
-      7139328
+      7094272,
+      7143424
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -1042,9 +1050,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.4139643999951659,
-       "peak_memory_bytes": 7065600,
-       "train_seconds": 0.398124,
+       "wall_s": 0.6749707999988459,
+       "peak_memory_bytes": 7143424,
+       "train_seconds": 0.6558662,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1060,9 +1068,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.3727926999999909,
-       "peak_memory_bytes": 7086080,
-       "train_seconds": 0.3604017,
+       "wall_s": 0.6929850000014994,
+       "peak_memory_bytes": 7127040,
+       "train_seconds": 0.6783986,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1078,9 +1086,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.37920570001006126,
-       "peak_memory_bytes": 7077888,
-       "train_seconds": 0.3666217,
+       "wall_s": 0.6081467999902088,
+       "peak_memory_bytes": 7127040,
+       "train_seconds": 0.5914841,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1096,9 +1104,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.36917319998610765,
-       "peak_memory_bytes": 7049216,
-       "train_seconds": 0.356026,
+       "wall_s": 0.7457877999986522,
+       "peak_memory_bytes": 7094272,
+       "train_seconds": 0.729946,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1114,9 +1122,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.39764710000599734,
-       "peak_memory_bytes": 7139328,
-       "train_seconds": 0.38532,
+       "wall_s": 0.7065350000048056,
+       "peak_memory_bytes": 7110656,
+       "train_seconds": 0.690037,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1124,10 +1132,10 @@
      ]
     },
     "boundml_core_in_memory": {
-     "median_train_seconds": 0.0089472,
+     "median_train_seconds": 0.0091718,
      "train_seconds_range": [
-      0.008838,
-      0.0091499
+      0.0087835,
+      0.0109783
      ],
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
@@ -1159,14 +1167,14 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.07050060000619851,
-       "peak_memory_bytes": 8028160,
+       "wall_s": 0.040067599999019876,
+       "peak_memory_bytes": 8032256,
        "runtime": "boundml-core-in-memory",
        "test": {
         "accuracy": 0.9596774193548387
        },
        "threads": 1,
-       "train_seconds": 0.0089472
+       "train_seconds": 0.0096766
       },
       {
        "command": [
@@ -1176,14 +1184,14 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.02173719998972956,
-       "peak_memory_bytes": 8032256,
+       "wall_s": 0.17963240001699887,
+       "peak_memory_bytes": 8036352,
        "runtime": "boundml-core-in-memory",
        "test": {
         "accuracy": 0.9596774193548387
        },
        "threads": 1,
-       "train_seconds": 0.0091499
+       "train_seconds": 0.0087835
       },
       {
        "command": [
@@ -1193,14 +1201,14 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.02186039999651257,
-       "peak_memory_bytes": 8040448,
+       "wall_s": 0.028136000008089468,
+       "peak_memory_bytes": 8036352,
        "runtime": "boundml-core-in-memory",
        "test": {
         "accuracy": 0.9596774193548387
        },
        "threads": 1,
-       "train_seconds": 0.0089067
+       "train_seconds": 0.0091718
       },
       {
        "command": [
@@ -1210,14 +1218,14 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.020961899994290434,
-       "peak_memory_bytes": 8040448,
+       "wall_s": 0.027074300014646724,
+       "peak_memory_bytes": 8028160,
        "runtime": "boundml-core-in-memory",
        "test": {
         "accuracy": 0.9596774193548387
        },
        "threads": 1,
-       "train_seconds": 0.008838
+       "train_seconds": 0.0109783
       },
       {
        "command": [
@@ -1227,22 +1235,22 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.027342100001988,
-       "peak_memory_bytes": 8036352,
+       "wall_s": 0.02602729998761788,
+       "peak_memory_bytes": 8040448,
        "runtime": "boundml-core-in-memory",
        "test": {
         "accuracy": 0.9596774193548387
        },
        "threads": 1,
-       "train_seconds": 0.0090726
+       "train_seconds": 0.0091031
       }
      ]
     },
     "pytorch_default": {
-     "median_train_seconds": 0.46363410000049043,
+     "median_train_seconds": 0.512983799999347,
      "train_seconds_range": [
-      0.41034489999583457,
-      1.1153924000100233
+      0.46301239999593236,
+      0.5634520000021439
      ],
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
@@ -1253,10 +1261,10 @@
       0.9596774193548387,
       0.9596774193548387
      ],
-     "median_peak_memory_bytes": 285929472,
+     "median_peak_memory_bytes": 286265344,
      "peak_memory_range": [
-      285470720,
-      286023680
+      285351936,
+      286474240
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -1278,13 +1286,13 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 8.324168100007228,
-       "peak_memory_bytes": 285929472,
+       "wall_s": 3.776378200011095,
+       "peak_memory_bytes": 285990912,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 1.1153924000100233,
+       "train_seconds": 0.512983799999347,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1299,13 +1307,13 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.2588060999987647,
-       "peak_memory_bytes": 285941760,
+       "wall_s": 3.970201600022847,
+       "peak_memory_bytes": 286265344,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.41034489999583457,
+       "train_seconds": 0.5634520000021439,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1320,13 +1328,13 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.237821700007771,
-       "peak_memory_bytes": 285782016,
+       "wall_s": 3.978718400001526,
+       "peak_memory_bytes": 285351936,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.42286230000900105,
+       "train_seconds": 0.5163458999886643,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1341,13 +1349,13 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.3090366999967955,
-       "peak_memory_bytes": 285470720,
+       "wall_s": 3.7798528999846894,
+       "peak_memory_bytes": 286326784,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.4675974999991013,
+       "train_seconds": 0.47778079999261536,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1362,13 +1370,13 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.527164500002982,
-       "peak_memory_bytes": 286023680,
+       "wall_s": 3.6138983000128064,
+       "peak_memory_bytes": 286474240,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.46363410000049043,
+       "train_seconds": 0.46301239999593236,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1376,10 +1384,10 @@
      ]
     },
     "pytorch_1_thread": {
-     "median_train_seconds": 0.3601712000090629,
+     "median_train_seconds": 0.3807201999879908,
      "train_seconds_range": [
-      0.35125540000444744,
-      0.4021271999954479
+      0.37434249999932945,
+      0.38286820001667365
      ],
      "metric": "accuracy",
      "median_test_metric": 0.9596774193548387,
@@ -1390,10 +1398,10 @@
       0.9596774193548387,
       0.9596774193548387
      ],
-     "median_peak_memory_bytes": 285544448,
+     "median_peak_memory_bytes": 285724672,
      "peak_memory_range": [
-      284794880,
-      286064640
+      285487104,
+      285843456
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -1415,13 +1423,13 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.221367599995574,
-       "peak_memory_bytes": 286064640,
+       "wall_s": 3.7093190000159666,
+       "peak_memory_bytes": 285843456,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.36236749999807216,
+       "train_seconds": 0.38209830000414513,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1436,13 +1444,13 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.2925861999974586,
-       "peak_memory_bytes": 285544448,
+       "wall_s": 3.6450564000115264,
+       "peak_memory_bytes": 285741056,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.35125540000444744,
+       "train_seconds": 0.38286820001667365,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1457,13 +1465,13 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.403092500011553,
-       "peak_memory_bytes": 285687808,
+       "wall_s": 3.593202399992151,
+       "peak_memory_bytes": 285724672,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.4021271999954479,
+       "train_seconds": 0.3753710000019055,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1478,13 +1486,13 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.352424800003064,
-       "peak_memory_bytes": 284794880,
+       "wall_s": 4.238736600003904,
+       "peak_memory_bytes": 285487104,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.3601712000090629,
+       "train_seconds": 0.3807201999879908,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -1499,13 +1507,13 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.2426925000036135,
-       "peak_memory_bytes": 285229056,
+       "wall_s": 3.8802341999835335,
+       "peak_memory_bytes": 285511680,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.35869999999704305,
+       "train_seconds": 0.37434249999932945,
        "test": {
         "accuracy": 0.9596774193548387
        }
@@ -2475,10 +2483,10 @@
      "b766a65202c2433e13e40de8b7fdc3aad44ed30d08c0047a819fd2e8044c4f30"
     ],
     "boundml_cli": {
-     "median_train_seconds": 0.343825,
+     "median_train_seconds": 0.3483918,
      "train_seconds_range": [
-      0.2339574,
-      0.4676902
+      0.344156,
+      0.5397619
      ],
      "metric": "rmse",
      "median_test_metric": 0.6634776647029015,
@@ -2489,10 +2497,10 @@
       0.6634776647029015,
       0.6634776647029015
      ],
-     "median_peak_memory_bytes": 6918144,
+     "median_peak_memory_bytes": 7032832,
      "peak_memory_range": [
-      6909952,
-      7041024
+      6889472,
+      7106560
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -2516,9 +2524,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.48725459999695886,
-       "peak_memory_bytes": 6918144,
-       "train_seconds": 0.4676902,
+       "wall_s": 0.5514124000037555,
+       "peak_memory_bytes": 7032832,
+       "train_seconds": 0.5397619,
        "test": {
         "rmse": 0.6634776647029015
        }
@@ -2534,9 +2542,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.3559965999884298,
-       "peak_memory_bytes": 7041024,
-       "train_seconds": 0.343825,
+       "wall_s": 0.35721769998781383,
+       "peak_memory_bytes": 6967296,
+       "train_seconds": 0.344156,
        "test": {
         "rmse": 0.6634776647029015
        }
@@ -2552,9 +2560,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.24810780001280364,
-       "peak_memory_bytes": 6918144,
-       "train_seconds": 0.2339574,
+       "wall_s": 0.3600021999736782,
+       "peak_memory_bytes": 6889472,
+       "train_seconds": 0.3483918,
        "test": {
         "rmse": 0.6634776647029015
        }
@@ -2570,9 +2578,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.41992000000027474,
-       "peak_memory_bytes": 6909952,
-       "train_seconds": 0.4050832,
+       "wall_s": 0.3662830999819562,
+       "peak_memory_bytes": 7041024,
+       "train_seconds": 0.3514393,
        "test": {
         "rmse": 0.6634776647029015
        }
@@ -2588,9 +2596,9 @@
         "--quiet"
        ],
        "exit_status": 0,
-       "wall_s": 0.2625994000118226,
-       "peak_memory_bytes": 6926336,
-       "train_seconds": 0.2507692,
+       "wall_s": 0.35611240001162514,
+       "peak_memory_bytes": 7106560,
+       "train_seconds": 0.3453245,
        "test": {
         "rmse": 0.6634776647029015
        }
@@ -2598,10 +2606,10 @@
      ]
     },
     "boundml_core_in_memory": {
-     "median_train_seconds": 0.0288757,
+     "median_train_seconds": 0.029028,
      "train_seconds_range": [
-      0.0285544,
-      0.0295262
+      0.0287311,
+      0.0296739
      ],
      "metric": "rmse",
      "median_test_metric": 0.6591545154892344,
@@ -2612,9 +2620,9 @@
       0.6591545154892344,
       0.6591545154892344
      ],
-     "median_peak_memory_bytes": 8847360,
+     "median_peak_memory_bytes": 8843264,
      "peak_memory_range": [
-      8843264,
+      8839168,
       8851456
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
@@ -2633,14 +2641,14 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.043503599998075515,
+       "wall_s": 0.04313199999160133,
        "peak_memory_bytes": 8847360,
        "runtime": "boundml-core-in-memory",
        "test": {
         "rmse": 0.6591545154892344
        },
        "threads": 1,
-       "train_seconds": 0.0288757
+       "train_seconds": 0.0296739
       },
       {
        "command": [
@@ -2650,14 +2658,14 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.04421860000002198,
-       "peak_memory_bytes": 8843264,
+       "wall_s": 0.055348900001263246,
+       "peak_memory_bytes": 8839168,
        "runtime": "boundml-core-in-memory",
        "test": {
         "rmse": 0.6591545154892344
        },
        "threads": 1,
-       "train_seconds": 0.0285544
+       "train_seconds": 0.0287311
       },
       {
        "command": [
@@ -2667,14 +2675,14 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.042884399998001754,
+       "wall_s": 0.043322799989255145,
        "peak_memory_bytes": 8851456,
        "runtime": "boundml-core-in-memory",
        "test": {
         "rmse": 0.6591545154892344
        },
        "threads": 1,
-       "train_seconds": 0.0290661
+       "train_seconds": 0.0291368
       },
       {
        "command": [
@@ -2684,14 +2692,14 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.042973799994797446,
-       "peak_memory_bytes": 8851456,
+       "wall_s": 0.043811600015033036,
+       "peak_memory_bytes": 8843264,
        "runtime": "boundml-core-in-memory",
        "test": {
         "rmse": 0.6591545154892344
        },
        "threads": 1,
-       "train_seconds": 0.0288162
+       "train_seconds": 0.0289947
       },
       {
        "command": [
@@ -2701,22 +2709,22 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 0.04351800000586081,
-       "peak_memory_bytes": 8847360,
+       "wall_s": 0.043311199988238513,
+       "peak_memory_bytes": 8843264,
        "runtime": "boundml-core-in-memory",
        "test": {
         "rmse": 0.6591545154892344
        },
        "threads": 1,
-       "train_seconds": 0.0295262
+       "train_seconds": 0.029028
       }
      ]
     },
     "pytorch_default": {
-     "median_train_seconds": 0.8213440000108676,
+     "median_train_seconds": 0.8646235000051092,
      "train_seconds_range": [
-      0.7890901000064332,
-      1.0258318999985931
+      0.8432405000203289,
+      1.2806283000099938
      ],
      "metric": "rmse",
      "median_test_metric": 0.6591544630683983,
@@ -2727,10 +2735,10 @@
       0.6591544630683983,
       0.6591544630683983
      ],
-     "median_peak_memory_bytes": 287567872,
+     "median_peak_memory_bytes": 287199232,
      "peak_memory_range": [
-      287186944,
-      287752192
+      287154176,
+      288096256
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -2752,13 +2760,13 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.8748494000028586,
-       "peak_memory_bytes": 287260672,
+       "wall_s": 3.9088854000146966,
+       "peak_memory_bytes": 287154176,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 1.0258318999985931,
+       "train_seconds": 0.8432405000203289,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2773,13 +2781,13 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.5818365000013728,
-       "peak_memory_bytes": 287186944,
+       "wall_s": 4.798320200003218,
+       "peak_memory_bytes": 287199232,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.7890901000064332,
+       "train_seconds": 1.2806283000099938,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2794,13 +2802,13 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.6043254999967758,
-       "peak_memory_bytes": 287752192,
+       "wall_s": 4.169431100017391,
+       "peak_memory_bytes": 288096256,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.8213440000108676,
+       "train_seconds": 0.9297484999988228,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2815,13 +2823,13 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.8140733999898657,
-       "peak_memory_bytes": 287596544,
+       "wall_s": 3.901970300008543,
+       "peak_memory_bytes": 287154176,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.8647951000020839,
+       "train_seconds": 0.8646235000051092,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2836,13 +2844,13 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.593182800002978,
-       "peak_memory_bytes": 287567872,
+       "wall_s": 4.2130963999952655,
+       "peak_memory_bytes": 287703040,
        "runtime": "pytorch",
        "threads": "default",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.80997760000173,
+       "train_seconds": 0.8556242999911774,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2850,10 +2858,10 @@
      ]
     },
     "pytorch_1_thread": {
-     "median_train_seconds": 0.66144820000045,
+     "median_train_seconds": 0.6921326000010595,
      "train_seconds_range": [
-      0.6539312999957474,
-      0.6974389999959385
+      0.6743178000033367,
+      0.7264144999790005
      ],
      "metric": "rmse",
      "median_test_metric": 0.6591544630683983,
@@ -2864,10 +2872,10 @@
       0.6591544630683983,
       0.6591544630683983
      ],
-     "median_peak_memory_bytes": 287145984,
+     "median_peak_memory_bytes": 287010816,
      "peak_memory_range": [
-      286855168,
-      287342592
+      286810112,
+      287625216
      ],
      "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
      "command": [
@@ -2889,13 +2897,13 @@
         "out/bench/control-0.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.433290799992392,
-       "peak_memory_bytes": 287145984,
+       "wall_s": 3.9840292999870144,
+       "peak_memory_bytes": 287625216,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.66144820000045,
+       "train_seconds": 0.7264144999790005,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2910,13 +2918,13 @@
         "out/bench/control-1.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.4353834000066854,
-       "peak_memory_bytes": 287236096,
+       "wall_s": 3.7295850999944378,
+       "peak_memory_bytes": 286887936,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.6587698000075761,
+       "train_seconds": 0.6902221000054851,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2931,13 +2939,13 @@
         "out/bench/control-2.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.4154329000011785,
-       "peak_memory_bytes": 286855168,
+       "wall_s": 4.409405100013828,
+       "peak_memory_bytes": 287035392,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.6539312999957474,
+       "train_seconds": 0.7002599000115879,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2952,13 +2960,13 @@
         "out/bench/control-3.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.721028899992234,
-       "peak_memory_bytes": 287342592,
+       "wall_s": 3.654374799982179,
+       "peak_memory_bytes": 287010816,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.6974389999959385,
+       "train_seconds": 0.6743178000033367,
        "test": {
         "rmse": 0.6591544630683983
        }
@@ -2973,13 +2981,13 @@
         "out/bench/control-4.json"
        ],
        "exit_status": 0,
-       "wall_s": 3.6077661000017542,
-       "peak_memory_bytes": 287047680,
+       "wall_s": 3.832635600003414,
+       "peak_memory_bytes": 286810112,
        "runtime": "pytorch",
        "threads": "1",
        "controlled": true,
        "torch": "2.12.1+cpu",
-       "train_seconds": 0.6626494999945862,
+       "train_seconds": 0.6921326000010595,
        "test": {
         "rmse": 0.6591544630683983
        }

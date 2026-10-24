@@ -104,7 +104,7 @@ Every timed Rust result goes through `std::hint::black_box`.
 ## Results
 
 <!-- BENCH:BEGIN -->
-Measured 2026-10-23 on AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD (16 logical CPUs), Windows-11-10.0.26200-SP0; 5 runs per measurement; medians shown, with the min–max over runs in parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `79ef2ab` (uncommitted changes to: `docs/benchmarks.md`). Python interpreter start-up (`python -I -c pass`): **38.8 ms**.
+Measured 2026-10-23 on AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD (16 logical CPUs), Windows-11-10.0.26200-SP0; 5 runs per measurement; medians shown, with the min–max over runs in parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `31f5e25` (recorded as `79ef2ab`, its ID before the 2026-10-24 history rewrite) (uncommitted changes to: `docs/benchmarks.md`). Python interpreter start-up (`python -I -c pass`): **38.8 ms**.
 
 Every reported run's outputs matched BoundML's for every test row at batch sizes 1, 7, 64 (every output finite and |a - b| <= atol + rtol * |b|, atol 1e-05, rtol 0.0001), validated before its timings were accepted. Memory is `peak_wset`: OS-reported peak working set (high-water mark) of the worker process.
 
@@ -128,14 +128,16 @@ Every reported run's outputs matched BoundML's for every test row at batch sizes
 
 Input copies inside the timed calls: BoundML: model only: predict_into copies the f32 input into the planned arena; PyTorch eager (Python): model only: none in user code (float32 inputs pre-built); ONNX Runtime (Python API): model only: none in user code (float32 inputs pre-built).
 
+Training rows re-measured on 2026-10-25 at commit `42abd73` (5 runs, `python bench/run_bench.py --training-only --runs 5`); inference above is from the run described at the top.
+
 **Training** (test split). The controlled rows load one control file written by BoundML's in-memory trainer: the same standardized data, initial weights and per-epoch batch order. The CLI row is a separate end-to-end measurement with its own streamed batch order.
 
 | Trainer | Train time (min–max) | Test metric (all runs) | Peak process memory |
 |---|---|---|---|
-| `boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation) | 366.6 ms (356.0 ms–398.1 ms) | accuracy 0.9597 | 6.8 MiB |
-| BoundML core, in-memory (writes the control file) | 8.9 ms (8.8 ms–9.1 ms) | accuracy 0.9597 | 7.7 MiB |
-| PyTorch, default threads, controlled | 463.6 ms (410.3 ms–1.12 s) | accuracy 0.9597 | 272.7 MiB |
-| PyTorch, 1 thread, controlled | 360.2 ms (351.3 ms–402.1 ms) | accuracy 0.9597 | 272.3 MiB |
+| `boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation) | 678.4 ms (591.5 ms–729.9 ms) | accuracy 0.9597 | 6.8 MiB |
+| BoundML core, in-memory (writes the control file) | 9.2 ms (8.8 ms–11.0 ms) | accuracy 0.9597 | 7.7 MiB |
+| PyTorch, default threads, controlled | 513.0 ms (463.0 ms–563.5 ms) | accuracy 0.9597 | 273.0 MiB |
+| PyTorch, 1 thread, controlled | 380.7 ms (374.3 ms–382.9 ms) | accuracy 0.9597 | 272.5 MiB |
 
 Sizes: `boundml` binary 4.1 MB; package 28.0 KB (includes schema, preprocessing, self-tests); ONNX file 2.5 KB; installed PyTorch 516 MB, ONNX Runtime 37 MB.
 
@@ -159,14 +161,16 @@ Sizes: `boundml` binary 4.1 MB; package 28.0 KB (includes schema, preprocessing,
 
 Input copies inside the timed calls: BoundML: model only: predict_into copies the f32 input into the planned arena; PyTorch eager (Python): model only: none in user code (float32 inputs pre-built); ONNX Runtime (Python API): model only: none in user code (float32 inputs pre-built).
 
+Training rows re-measured on 2026-10-25 at commit `42abd73` (5 runs, `python bench/run_bench.py --training-only --runs 5`); inference above is from the run described at the top.
+
 **Training** (test split). The controlled rows load one control file written by BoundML's in-memory trainer: the same standardized data, initial weights and per-epoch batch order. The CLI row is a separate end-to-end measurement with its own streamed batch order.
 
 | Trainer | Train time (min–max) | Test metric (all runs) | Peak process memory |
 |---|---|---|---|
-| `boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation) | 343.8 ms (234.0 ms–467.7 ms) | rmse 0.6635 | 6.6 MiB |
-| BoundML core, in-memory (writes the control file) | 28.9 ms (28.6 ms–29.5 ms) | rmse 0.6592 | 8.4 MiB |
-| PyTorch, default threads, controlled | 821.3 ms (789.1 ms–1.03 s) | rmse 0.6592 | 274.2 MiB |
-| PyTorch, 1 thread, controlled | 661.4 ms (653.9 ms–697.4 ms) | rmse 0.6592 | 273.8 MiB |
+| `boundml train` CLI (own init and streamed batch order; CSV re-read every epoch + validation) | 348.4 ms (344.2 ms–539.8 ms) | rmse 0.6635 | 6.7 MiB |
+| BoundML core, in-memory (writes the control file) | 29.0 ms (28.7 ms–29.7 ms) | rmse 0.6592 | 8.4 MiB |
+| PyTorch, default threads, controlled | 864.6 ms (843.2 ms–1.28 s) | rmse 0.6592 | 273.9 MiB |
+| PyTorch, 1 thread, controlled | 692.1 ms (674.3 ms–726.4 ms) | rmse 0.6592 | 273.7 MiB |
 
 Sizes: `boundml` binary 4.1 MB; package 17.5 KB (includes schema, preprocessing, self-tests); ONNX file 4.4 KB; installed PyTorch 516 MB, ONNX Runtime 37 MB.
 
@@ -192,11 +196,20 @@ Sizes: `boundml` binary 4.1 MB; package 17.5 KB (includes schema, preprocessing,
   190–210 ms to start and 50 MiB; PyTorch takes 1.4 s and 200 MiB.
 - **Training: BoundML's core is fast on these tiny models, but `boundml train` is
   not.** From identical initial weights and batch order, BoundML core trains in 9 ms
-  and 29 ms, against 360 ms and 661 ms for single-threaded PyTorch. The CLI takes
-  367 ms and 344 ms; the wine CLI time ranged from 234 to 468 ms over the 5 runs.
-  Most of that goes to re-parsing the CSV every epoch and running validation, a
-  design choice that bounds memory for large files. Caching small datasets in memory
-  is on the [roadmap](../ROADMAP.md).
+  and 29 ms, against 381 ms and 692 ms for single-threaded PyTorch. The CLI takes
+  678 ms and 348 ms. Most of that goes to re-parsing the CSV every epoch and running
+  validation, a design choice that bounds memory for large files. Caching small
+  datasets in memory is on the [roadmap](../ROADMAP.md).
+- **The training rows were re-measured on 2026-10-25** after a fix to the PyTorch
+  timer boundary: it now builds its permutation tensors before its timer starts, as
+  BoundML's in-memory trainer always did. Every training row ran slower in this
+  session than in the previous one, including the BoundML CLI, which the fix does
+  not touch (breast cancer: 367 ms then, 678 ms now). That points to a different
+  machine state, not to the code change. Rows within one session are measured
+  interleaved, so they remain comparable with each other; compare across sessions
+  with care. As a result, T4 on breast cancer moved from 1.02× to **1.78×** against
+  its 2× limit. It is still met, but with less margin. The previous record is kept
+  in [results/history/2026-10-24-pre-b3](results/history/2026-10-24-pre-b3/README.md).
 - **Quality.** In the controlled comparison, BoundML core and PyTorch reach the same
   test metric to four decimals on both datasets (accuracy 0.9597; RMSE 0.6592), which
   is evidence that the two compute the same training. The CLI's RMSE (0.6635)
@@ -238,12 +251,12 @@ evaluated per dataset with the measurement the target names.
 | T1 memory | Breast cancer | ≤ 20% of PyTorch peak | 2.8% | **met** |
 | T2 cold start | Breast cancer | ≤ 10% of PyTorch | 0.4% | **met** |
 | T3 throughput | Breast cancer | ≥ 50% of ORT batch-256 rows/s (the pre-declared text does not say whether preprocessing is included, so both readings are shown) | incl. preprocessing 70% (**met**); model only 42% (**not met**) | **met** only if preprocessing is included |
-| T4 training | Breast cancer | `boundml train` ≤ 2× PyTorch 1-thread | 1.02× | **met** |
+| T4 training | Breast cancer | `boundml train` ≤ 2× PyTorch 1-thread | 1.78× | **met** |
 | T5 quality | Breast cancer | within 2 pp of PyTorch | +0.0 pp accuracy | **met** |
 | T1 memory | Wine quality | ≤ 20% of PyTorch peak | 2.8% | **met** |
 | T2 cold start | Wine quality | ≤ 10% of PyTorch | 0.4% | **met** |
 | T3 throughput | Wine quality | ≥ 50% of ORT batch-256 rows/s (the pre-declared text does not say whether preprocessing is included, so both readings are shown) | incl. preprocessing 67% (**met**); model only 51% (**met**) | **met under both readings** |
-| T4 training | Wine quality | `boundml train` ≤ 2× PyTorch 1-thread | 0.52× | **met** |
+| T4 training | Wine quality | `boundml train` ≤ 2× PyTorch 1-thread | 0.50× | **met** |
 | T5 quality | Wine quality | within 10% RMSE of PyTorch | RMSE 0.6635 vs 0.6592 (+0.7%) | **met** |
 <!-- TARGETS:END -->
 
