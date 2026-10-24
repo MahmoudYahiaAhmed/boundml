@@ -73,6 +73,16 @@ validation files.
 `--workers` (workers are limited to the package's `deploy.sessions`), or retry after
 the `Retry-After` interval. `BML-S003` means the server is shutting down.
 
+Over capacity, the server rejects a request *before* buffering its body. So that the
+503 can reach the client, it first reads and discards up to 64 KiB of the body, for
+at most 250 ms in total, then answers with `Connection: close`. That fixed a
+reproduced Windows case where a TCP reset destroyed the 503 (error 10053). It is
+**not** a delivery guarantee. A client that sends a larger body, or sends it more
+slowly than that, can still see the connection reset instead of a readable 503;
+treat a reset during overload like a 503 and retry. Rejected requests do not take an
+admission slot while draining, so each holds its connection for up to 250 ms; the
+draining itself never buffers the body.
+
 ## The HTTP request returns 422
 
 Read the message:

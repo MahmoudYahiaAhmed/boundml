@@ -277,3 +277,61 @@ fn overload_503_reaches_a_client_that_sent_a_body() {
     }
     s.shutdown();
 }
+
+/// Draining a rejected body has one overall deadline: a client that trickles an
+/// endless body cannot keep the server reading. (Delivery of the 503 itself is not
+/// guaranteed for such a client; the connection may end with a reset instead.)
+#[test]
+fn rejected_body_drain_has_an_overall_time_limit() {
+    let d = tempfile::tempdir().unwrap();
+    let hooks = Arc::new(TestHooks::default());
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    *hooks.hold_next.lock().unwrap() = Some((entered_tx, release_rx));
+    let cfg = ServeConfig {
+        queue: 0,
+        timeout: Duration::from_secs(30),
+        ..cfg(&hooks)
+    };
+    let s = start(package(d.path(), 1), cfg);
+    let a = s.addr;
+    let first = std::thread::spawn(move || http(a, "POST", "/v1/predict", ONE).0);
+    entered_rx
+        .recv_timeout(Duration::from_secs(10))
+        .expect("first request holds the only slot");
+    let outcome = (|| -> std::io::Result<std::time::Duration> {
+        let mut c = std::net::TcpStream::connect(a)?;
+        c.set_read_timeout(Some(Duration::from_secs(10)))?;
+        write!(
+            c,
+            "POST /v1/predict HTTP/1.1\r\nHost: x\r\nContent-Length: 100000000\r\n\r\n"
+        )?;
+        let started = std::time::Instant::now();
+        let mut writer = c.try_clone()?;
+        // Trickle 1 KiB every 20 ms, far below the byte ceiling, for up to 10 s.
+        let trickle = std::thread::spawn(move || {
+            for _ in 0..500 {
+                if writer.write_all(&[b' '; 1024]).is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        });
+        let mut buf = [0u8; 4096];
+        // Returns once the server answers or closes (EOF or reset): either way it
+        // stopped reading this request.
+        let _ = c.read(&mut buf);
+        let elapsed = started.elapsed();
+        drop(c);
+        let _ = trickle.join();
+        Ok(elapsed)
+    })();
+    release_tx.send(()).unwrap();
+    assert_eq!(first.join().unwrap(), 200);
+    let elapsed = outcome.expect("client I/O");
+    assert!(
+        elapsed < Duration::from_secs(3),
+        "the server kept reading a rejected body for {elapsed:?}"
+    );
+    s.shutdown();
+}
