@@ -43,7 +43,9 @@ package (checked in CI). A package trained with any of them works with the other
 
 ## Install
 
-Nothing is on crates.io or PyPI yet, and no GitHub release has been published. Today
+Nothing is on crates.io or PyPI yet, and no GitHub release has been published.
+(**`pip install boundml` installs an unrelated PyPI project** with the same name; use
+one of the paths below.) Today
 there are three ways in, all from this repository:
 
 | What | How | Needs |
@@ -64,7 +66,7 @@ archive folder, type `.\boundml …` instead, or add the folder to `PATH`.
 boundml --version
 ```
 ```text
-boundml 0.1.0 (revision 42abd73cb1, x86_64-pc-windows-msvc)
+boundml 0.1.0 (revision 4cb8b6c7fe, x86_64-pc-windows-msvc)
 ```
 The revision (source commit) and target identify your build and will differ. A build
 from a source archive without `.git` prints `revision unknown`.

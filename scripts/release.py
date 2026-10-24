@@ -49,11 +49,15 @@ INCLUDE_GLOBS = [
 ]
 
 
+# Private review and planning documents: kept in the repository, never shipped.
+EXCLUDE_FILES = {"docs/MORNING-HANDOFF.md", "docs/publication-plan.md"}
+
+
 def included() -> list[str]:
     out = list(INCLUDE_FILES)
     for g in INCLUDE_GLOBS:
         out += [p.relative_to(ROOT).as_posix() for p in sorted(ROOT.glob(g))]
-    return sorted(set(out))
+    return sorted(set(out) - EXCLUDE_FILES)
 
 
 def version() -> str:
@@ -194,10 +198,11 @@ def main() -> None:
             shutil.copy2(ROOT / rel, d)
         path = archive(stage, out, "windows" in target)
     digest = sha256(path)
-    (out / f"{path.name}.sha256").write_text(f"{digest}  {path.name}\n")
+    # LF line endings on every platform, so `sha256sum -c` works wherever the file is checked.
+    (out / f"{path.name}.sha256").write_text(f"{digest}  {path.name}\n", newline="\n")
     sums = out / "SHA256SUMS"
     lines = [l for l in (sums.read_text().splitlines() if sums.exists() else []) if not l.endswith(path.name)]
-    sums.write_text("\n".join(sorted(lines + [f"{digest}  {path.name}"])) + "\n")
+    sums.write_text("\n".join(sorted(lines + [f"{digest}  {path.name}"])) + "\n", newline="\n")
     report = smoke(path, stage_name, ver)
     report.update({"sha256": digest, "bytes": path.stat().st_size, "target": target,
                    "built_on": platform.platform(), "version": ver})

@@ -11,7 +11,9 @@ x86_64 and macOS arm64; they are not on PyPI yet.
 
 ## Install
 
-Not on PyPI yet. Install from a checkout (builds a wheel; needs Rust 1.94+) or from a
+Not on PyPI yet. **Do not run `pip install boundml`**: that name on PyPI belongs to an
+unrelated project (a branch-and-bound solver toolbox), so it installs something else.
+Install from a checkout (builds a wheel; needs Rust 1.94+) or from a
 wheel file built by CI or by `maturin build --release`:
 
 ```bash
