@@ -44,12 +44,20 @@ All runtimes execute **the same weights**. The ONNX and PyTorch models are rebui
 from the BoundML package (`bench/pymodel.py`); `bench.json` records the SHA-256 of
 the package manifest, weights, ONNX file and test CSV.
 
-**Parity gate.** Before any timing, every worker writes its outputs for every test
-row at batch sizes 1, 7 and 64, starting from raw values. The driver checks each
-output against BoundML at batch 1: it must be finite and within `1e-5 + 1e-4 × |ref|`.
-Any mismatch, missing output, non-zero worker exit or step timeout (300 s) aborts the
-whole benchmark without writing results. The largest error seen is reported per
-runtime. `bench/test_run_bench.py` checks that these failures abort.
+**Parity gate.** Each worker process writes its outputs for every test row at batch
+sizes 1, 7 and 64, starting from raw values, *before its own timed section*, then
+signals the driver and continues into timing. The driver validates those outputs
+while the worker runs: exactly the batch sizes 1, 7 and 64; exactly `rows × outputs`
+values each, with `rows` counted from the test CSV and `outputs` taken from the
+package's task; every candidate and reference value finite; and every value within
+`1e-5 + 1e-4 × |ref|` of BoundML's batch-1 output. The warm-up launch of every
+runtime goes through the same check. A run's timings become eligible for reporting
+only after its parity has validated *and* the worker has exited with status 0. Any
+validation failure, malformed file or results line, non-zero exit or step timeout
+(300 s) kills that worker, closes its pipes and aborts the whole benchmark before
+`bench.json` is written. The largest error seen is reported per runtime.
+`bench/test_run_bench.py` (run in CI on Linux, Windows and macOS) checks each of
+these failure paths with scripted workers.
 
 **Runs.** Each run starts a fresh worker process; runtimes are interleaved within a
 run, after one untimed warm-up launch per runtime (file-system cache, first library
@@ -98,7 +106,7 @@ Every timed Rust result goes through `std::hint::black_box`.
 <!-- BENCH:BEGIN -->
 Measured 2026-10-23 on AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD (16 logical CPUs), Windows-11-10.0.26200-SP0; 5 runs per measurement; medians shown, with the min–max over runs in parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `79ef2ab` (uncommitted changes to: `docs/benchmarks.md`). Python interpreter start-up (`python -I -c pass`): **38.8 ms**.
 
-Timing ran only after every runtime's outputs matched BoundML's for every test row at batch sizes 1, 7, 64 (every output finite and |a - b| <= atol + rtol * |b|, atol 1e-05, rtol 0.0001). Memory is `peak_wset`: OS-reported peak working set (high-water mark) of the worker process.
+Every reported run's outputs matched BoundML's for every test row at batch sizes 1, 7, 64 (every output finite and |a - b| <= atol + rtol * |b|, atol 1e-05, rtol 0.0001), validated before its timings were accepted. Memory is `peak_wset`: OS-reported peak working set (high-water mark) of the worker process.
 
 ### Breast cancer (MLP 30-16-1, sigmoid output)
 

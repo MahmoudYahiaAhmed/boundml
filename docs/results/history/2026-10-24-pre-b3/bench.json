@@ -1,0 +1,2992 @@
+{
+ "environment": {
+  "date": "2026-10-23",
+  "command": "python bench/run_bench.py --runs 5",
+  "git_commit": "79ef2ab344a4dfb2096af9c57699ac648e25e67e",
+  "git_uncommitted_files": [
+   "M docs/benchmarks.md"
+  ],
+  "cpu": "AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD",
+  "logical_cpus": 16,
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.9",
+  "torch": "2.12.1+cpu",
+  "onnxruntime": "1.20.1",
+  "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02)",
+  "boundml_build": "cargo --release (lto=thin, codegen-units=1), default target CPU",
+  "torch_threads_default": 8,
+  "python_interpreter_startup_s": 0.03878729999996722,
+  "python_interpreter_startup_runs_s": [
+   0.043624300000374205,
+   0.03878729999996722,
+   0.03764920000685379,
+   0.036302500011515804,
+   0.03936900000553578
+  ],
+  "runs_per_measurement": 5,
+  "warm_up_launches_per_runtime": 1,
+  "parity": {
+   "batch_sizes": [
+    1,
+    7,
+    64
+   ],
+   "atol": 1e-05,
+   "rtol": 0.0001,
+   "reference": "BoundML, batch 1",
+   "rule": "every output finite and |a - b| <= atol + rtol * |b|"
+  },
+  "inference_memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+  "training_memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+ },
+ "datasets": {
+  "breast_cancer": {
+   "model_identity": {
+    "package_manifest_sha256": "2cd591b9ef838d5e5e915485149f896d9a4c578d17b2ddcac2547b228394cf5f",
+    "package_weights_sha256": "ecf238a3a70f2af485ef45c41e03414fa8b2b111d5bbf73392b5c5160ca0fcd3",
+    "onnx_sha256": "9c7734c14a0e8086b634dfde2ee64463b93df9f3c4c574c23308e0b2d57ee57b",
+    "test_csv_sha256": "35b698623144bdb08669f6f084544b921536a6f5055a36fe10b7eb59cc66896b",
+    "config": "examples/breast_cancer/mlp.toml"
+   },
+   "inference": {
+    "boundml": {
+     "wall_s": 4.017977299998165,
+     "parity_max_abs_error": 0.0,
+     "parity_outputs_checked": 372,
+     "batch256_core_rows_per_s": 8951927.048072953,
+     "batch256_e2e_rows_per_s": 7043111.961100486,
+     "latency_core_us": {
+      "p50": 0.3,
+      "p95": 0.4,
+      "p99": 0.4
+     },
+     "latency_e2e_us": {
+      "p50": 0.3,
+      "p95": 0.4,
+      "p99": 0.4
+     },
+     "load_s": 0.0005573,
+     "planned_tensor_bytes": 49156,
+     "preprocess_us_per_row": {
+      "p50": 0.1,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "boundml",
+     "threads": 1,
+     "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+     "cold_start_s": 0.005472500008181669,
+     "peak_memory_bytes": 5951488,
+     "spread": {
+      "wall_s": [
+       4.01753219999955,
+       4.020225100000971
+      ],
+      "parity_max_abs_error": [
+       0.0,
+       0.0
+      ],
+      "parity_outputs_checked": [
+       372,
+       372
+      ],
+      "batch256_core_rows_per_s": [
+       8705214.275632218,
+       9062500.359373905
+      ],
+      "batch256_e2e_rows_per_s": [
+       6862005.890336384,
+       7075469.023628365
+      ],
+      "latency_core_us": {
+       "p50": [
+        0.3,
+        0.3
+       ],
+       "p95": [
+        0.3,
+        0.4
+       ],
+       "p99": [
+        0.4,
+        0.4
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        0.3,
+        0.3
+       ],
+       "p95": [
+        0.4,
+        0.4
+       ],
+       "p99": [
+        0.4,
+        0.4
+       ]
+      },
+      "load_s": [
+       0.0005368,
+       0.0005719
+      ],
+      "planned_tensor_bytes": [
+       49156,
+       49156
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        0.1,
+        0.1
+       ],
+       "p95": [
+        0.1,
+        0.1
+       ],
+       "p99": [
+        0.1,
+        0.1
+       ]
+      },
+      "runtime": null,
+      "threads": [
+       1,
+       1
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       0.005283499995130114,
+       0.007430099998600781
+      ],
+      "peak_memory_bytes": [
+       5943296,
+       5959680
+      ]
+     },
+     "command": [
+      "target/release/infer.exe",
+      "out/bench/breast_cancer.boundml",
+      "datasets/breast_cancer/test.csv",
+      "out/bench/breast_cancer.parity.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.020225100000971,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 372,
+       "batch256_core_rows_per_s": 9062500.359373905,
+       "batch256_e2e_rows_per_s": 7056131.812080107,
+       "latency_core_us": {
+        "p50": 0.3,
+        "p95": 0.3,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "load_s": 0.0005444,
+       "planned_tensor_bytes": 49156,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.007430099998600781,
+       "peak_memory_bytes": 5943296
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.017977299998165,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 372,
+       "batch256_core_rows_per_s": 8885781.370623553,
+       "batch256_e2e_rows_per_s": 6862005.890336384,
+       "latency_core_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "load_s": 0.0005719,
+       "planned_tensor_bytes": 49156,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.005472500008181669,
+       "peak_memory_bytes": 5951488
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.01753219999955,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 372,
+       "batch256_core_rows_per_s": 8983527.295299938,
+       "batch256_e2e_rows_per_s": 7075469.023628365,
+       "latency_core_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "load_s": 0.0005573,
+       "planned_tensor_bytes": 49156,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.005283499995130114,
+       "peak_memory_bytes": 5951488
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.0178034999989904,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 372,
+       "batch256_core_rows_per_s": 8705214.275632218,
+       "batch256_e2e_rows_per_s": 6965343.959417786,
+       "latency_core_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "load_s": 0.0005653,
+       "planned_tensor_bytes": 49156,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.0055474999971920624,
+       "peak_memory_bytes": 5959680
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.0179905999975745,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 372,
+       "batch256_core_rows_per_s": 8951927.048072953,
+       "batch256_e2e_rows_per_s": 7043111.961100486,
+       "latency_core_us": {
+        "p50": 0.3,
+        "p95": 0.3,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.3,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "load_s": 0.0005368,
+       "planned_tensor_bytes": 49156,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.0053801999893039465,
+       "peak_memory_bytes": 5955584
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    },
+    "pytorch_eager": {
+     "wall_s": 6.033378499996616,
+     "parity_max_abs_error": 1.4901161193847656e-07,
+     "parity_outputs_checked": 372,
+     "runtime": "torch",
+     "threads": 8,
+     "import_s": 1.364936999991187,
+     "load_s": 0.0035263999889139086,
+     "preprocess_us_per_row": {
+      "p50": 3.6,
+      "p95": 3.7,
+      "p99": 4.1
+     },
+     "latency_core_us": {
+      "p50": 31.1,
+      "p95": 32.1,
+      "p99": 36.9
+     },
+     "latency_e2e_us": {
+      "p50": 26.9,
+      "p95": 37.3,
+      "p99": 44.2
+     },
+     "batch256_core_rows_per_s": 7419108.920208186,
+     "batch256_e2e_rows_per_s": 4588199.9065586785,
+     "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+     "cold_start_s": 1.4039078000059817,
+     "peak_memory_bytes": 211197952,
+     "spread": {
+      "wall_s": [
+       5.941228700001375,
+       6.174785499999416
+      ],
+      "parity_max_abs_error": [
+       1.4901161193847656e-07,
+       1.4901161193847656e-07
+      ],
+      "parity_outputs_checked": [
+       372,
+       372
+      ],
+      "runtime": null,
+      "threads": [
+       8,
+       8
+      ],
+      "import_s": [
+       1.3271269999968354,
+       1.5078295999992406
+      ],
+      "load_s": [
+       0.0031537000031676143,
+       0.0037728000024799258
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        2.3,
+        4.0
+       ],
+       "p95": [
+        3.7,
+        4.7
+       ],
+       "p99": [
+        3.8,
+        4.9
+       ]
+      },
+      "latency_core_us": {
+       "p50": [
+        22.1,
+        31.5
+       ],
+       "p95": [
+        31.3,
+        33.3
+       ],
+       "p99": [
+        35.2,
+        38.4
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        26.7,
+        27.4
+       ],
+       "p95": [
+        28.2,
+        37.8
+       ],
+       "p99": [
+        34.4,
+        46.1
+       ]
+      },
+      "batch256_core_rows_per_s": [
+       6913185.980658954,
+       7573669.49467676
+      ],
+      "batch256_e2e_rows_per_s": [
+       3210733.056670889,
+       4660925.581779497
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       1.366755999988527,
+       1.5517179000016768
+      ],
+      "peak_memory_bytes": [
+       211099648,
+       211300352
+      ]
+     },
+     "command": [
+      "python",
+      "bench/py_infer.py",
+      "torch",
+      "out/bench/breast_cancer.boundml",
+      "datasets/breast_cancer/test.csv",
+      "out/bench/breast_cancer.parity.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 5.941228700001375,
+       "parity_max_abs_error": 1.4901161193847656e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3387892000027932,
+       "load_s": 0.0031537000031676143,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 3.7,
+        "p99": 4.3
+       },
+       "latency_core_us": {
+        "p50": 22.1,
+        "p95": 31.3,
+        "p99": 38.4
+       },
+       "latency_e2e_us": {
+        "p50": 26.8,
+        "p95": 28.2,
+        "p99": 34.4
+       },
+       "batch256_core_rows_per_s": 6913185.980658954,
+       "batch256_e2e_rows_per_s": 3210733.056670889,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.3775249000027543,
+       "peak_memory_bytes": 211099648
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.17062759998953,
+       "parity_max_abs_error": 1.4901161193847656e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.4906480000063311,
+       "load_s": 0.0037728000024799258,
+       "preprocess_us_per_row": {
+        "p50": 3.7,
+        "p95": 3.8,
+        "p99": 3.9
+       },
+       "latency_core_us": {
+        "p50": 31.5,
+        "p95": 32.7,
+        "p99": 38.2
+       },
+       "latency_e2e_us": {
+        "p50": 27.3,
+        "p95": 37.8,
+        "p99": 45.0
+       },
+       "batch256_core_rows_per_s": 7419108.920208186,
+       "batch256_e2e_rows_per_s": 4518549.814092737,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.5345962999999756,
+       "peak_memory_bytes": 211218432
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 5.986172999997507,
+       "parity_max_abs_error": 1.4901161193847656e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3271269999968354,
+       "load_s": 0.003242899998440407,
+       "preprocess_us_per_row": {
+        "p50": 3.6,
+        "p95": 3.7,
+        "p99": 4.1
+       },
+       "latency_core_us": {
+        "p50": 31.0,
+        "p95": 32.1,
+        "p99": 36.9
+       },
+       "latency_e2e_us": {
+        "p50": 26.7,
+        "p95": 37.5,
+        "p99": 41.2
+       },
+       "batch256_core_rows_per_s": 7573669.49467676,
+       "batch256_e2e_rows_per_s": 4588199.9065586785,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.366755999988527,
+       "peak_memory_bytes": 211197952
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.174785499999416,
+       "parity_max_abs_error": 1.4901161193847656e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.5078295999992406,
+       "load_s": 0.0035263999889139086,
+       "preprocess_us_per_row": {
+        "p50": 4.0,
+        "p95": 4.7,
+        "p99": 4.9
+       },
+       "latency_core_us": {
+        "p50": 31.2,
+        "p95": 33.3,
+        "p99": 36.5
+       },
+       "latency_e2e_us": {
+        "p50": 27.4,
+        "p95": 37.3,
+        "p99": 46.1
+       },
+       "batch256_core_rows_per_s": 6995569.659074799,
+       "batch256_e2e_rows_per_s": 4660925.581779497,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.5517179000016768,
+       "peak_memory_bytes": 211300352
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.033378499996616,
+       "parity_max_abs_error": 1.4901161193847656e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.364936999991187,
+       "load_s": 0.0036229999968782067,
+       "preprocess_us_per_row": {
+        "p50": 3.6,
+        "p95": 3.7,
+        "p99": 3.8
+       },
+       "latency_core_us": {
+        "p50": 31.1,
+        "p95": 31.9,
+        "p99": 35.2
+       },
+       "latency_e2e_us": {
+        "p50": 26.9,
+        "p95": 31.6,
+        "p99": 44.2
+       },
+       "batch256_core_rows_per_s": 7490281.903663629,
+       "batch256_e2e_rows_per_s": 4608751.97651066,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.4039078000059817,
+       "peak_memory_bytes": 211161088
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    },
+    "onnxruntime": {
+     "wall_s": 4.317610400001286,
+     "parity_max_abs_error": 1.1920928955078125e-07,
+     "parity_outputs_checked": 372,
+     "runtime": "ort",
+     "threads": "ort-default",
+     "import_s": 0.14102460000140127,
+     "load_s": 0.008913599987863563,
+     "preprocess_us_per_row": {
+      "p50": 2.3,
+      "p95": 2.7,
+      "p99": 4.1
+     },
+     "latency_core_us": {
+      "p50": 7.1,
+      "p95": 7.6,
+      "p99": 10.1
+     },
+     "latency_e2e_us": {
+      "p50": 9.8,
+      "p95": 10.4,
+      "p99": 12.7
+     },
+     "batch256_core_rows_per_s": 21526114.859417964,
+     "batch256_e2e_rows_per_s": 10088801.229142163,
+     "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+     "cold_start_s": 0.18697860000247601,
+     "peak_memory_bytes": 52486144,
+     "spread": {
+      "wall_s": [
+       4.312891099994886,
+       4.32192909999867
+      ],
+      "parity_max_abs_error": [
+       1.1920928955078125e-07,
+       1.1920928955078125e-07
+      ],
+      "parity_outputs_checked": [
+       372,
+       372
+      ],
+      "runtime": null,
+      "threads": null,
+      "import_s": [
+       0.1384532000083709,
+       0.14177300001028925
+      ],
+      "load_s": [
+       0.00872969999909401,
+       0.009633299996494316
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        2.3,
+        3.4
+       ],
+       "p95": [
+        2.4,
+        3.7
+       ],
+       "p99": [
+        3.5,
+        4.4
+       ]
+      },
+      "latency_core_us": {
+       "p50": [
+        7.1,
+        7.5
+       ],
+       "p95": [
+        7.3,
+        7.8
+       ],
+       "p99": [
+        9.8,
+        11.1
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        9.7,
+        10.1
+       ],
+       "p95": [
+        9.9,
+        10.9
+       ],
+       "p99": [
+        12.3,
+        16.9
+       ]
+      },
+      "batch256_core_rows_per_s": [
+       21265452.160048824,
+       21980837.878678128
+      ],
+      "batch256_e2e_rows_per_s": [
+       9351248.776174292,
+       10413793.799995333
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       0.1839343000028748,
+       0.1895568999898387
+      ],
+      "peak_memory_bytes": [
+       52424704,
+       52781056
+      ]
+     },
+     "command": [
+      "python",
+      "bench/py_infer.py",
+      "ort",
+      "out/bench/breast_cancer.boundml",
+      "datasets/breast_cancer/test.csv",
+      "out/bench/breast_cancer.parity.json",
+      "out/bench/breast_cancer.onnx"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json",
+        "out/bench/breast_cancer.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.312891099994886,
+       "parity_max_abs_error": 1.1920928955078125e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.1384532000083709,
+       "load_s": 0.009220600011758506,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 2.4,
+        "p99": 4.0
+       },
+       "latency_core_us": {
+        "p50": 7.1,
+        "p95": 7.3,
+        "p99": 10.1
+       },
+       "latency_e2e_us": {
+        "p50": 9.7,
+        "p95": 10.9,
+        "p99": 16.9
+       },
+       "batch256_core_rows_per_s": 21265452.160048824,
+       "batch256_e2e_rows_per_s": 9969887.597836202,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.1839343000028748,
+       "peak_memory_bytes": 52428800
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json",
+        "out/bench/breast_cancer.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.316298899997491,
+       "parity_max_abs_error": 1.1920928955078125e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.14177300001028925,
+       "load_s": 0.008731699999771081,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 2.4,
+        "p99": 4.1
+       },
+       "latency_core_us": {
+        "p50": 7.1,
+        "p95": 7.7,
+        "p99": 10.7
+       },
+       "latency_e2e_us": {
+        "p50": 9.8,
+        "p95": 10.8,
+        "p99": 14.7
+       },
+       "batch256_core_rows_per_s": 21458838.851669643,
+       "batch256_e2e_rows_per_s": 10088801.229142163,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.18697860000247601,
+       "peak_memory_bytes": 52424704
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json",
+        "out/bench/breast_cancer.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.317610400001286,
+       "parity_max_abs_error": 1.1920928955078125e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.1406571000115946,
+       "load_s": 0.00872969999909401,
+       "preprocess_us_per_row": {
+        "p50": 3.4,
+        "p95": 3.5,
+        "p99": 3.5
+       },
+       "latency_core_us": {
+        "p50": 7.1,
+        "p95": 7.3,
+        "p99": 9.9
+       },
+       "latency_e2e_us": {
+        "p50": 9.8,
+        "p95": 9.9,
+        "p99": 12.4
+       },
+       "batch256_core_rows_per_s": 21980837.878678128,
+       "batch256_e2e_rows_per_s": 10413793.799995333,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.18574629999056924,
+       "peak_memory_bytes": 52584448
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json",
+        "out/bench/breast_cancer.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.321793800001615,
+       "parity_max_abs_error": 1.1920928955078125e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.14164879999589175,
+       "load_s": 0.008913599987863563,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 3.7,
+        "p99": 4.1
+       },
+       "latency_core_us": {
+        "p50": 7.5,
+        "p95": 7.6,
+        "p99": 9.8
+       },
+       "latency_e2e_us": {
+        "p50": 10.1,
+        "p95": 10.4,
+        "p99": 12.7
+       },
+       "batch256_core_rows_per_s": 21698232.395919364,
+       "batch256_e2e_rows_per_s": 10336714.765964862,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.18864549999125302,
+       "peak_memory_bytes": 52486144
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/breast_cancer.boundml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/breast_cancer.parity.json",
+        "out/bench/breast_cancer.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.32192909999867,
+       "parity_max_abs_error": 1.1920928955078125e-07,
+       "parity_outputs_checked": 372,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.14102460000140127,
+       "load_s": 0.009633299996494316,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 2.7,
+        "p99": 4.4
+       },
+       "latency_core_us": {
+        "p50": 7.5,
+        "p95": 7.8,
+        "p99": 11.1
+       },
+       "latency_e2e_us": {
+        "p50": 10.1,
+        "p95": 10.3,
+        "p99": 12.3
+       },
+       "batch256_core_rows_per_s": 21526114.859417964,
+       "batch256_e2e_rows_per_s": 9351248.776174292,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.1895568999898387,
+       "peak_memory_bytes": 52781056
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    }
+   },
+   "sizes": {
+    "boundml_cli_binary_bytes": 4090880,
+    "boundml_package_bytes": 27972,
+    "onnx_model_bytes": 2536,
+    "torch_install_bytes": 515786424,
+    "onnxruntime_install_bytes": 36794661
+   },
+   "training": {
+    "control_file_sha256": [
+     "a6f96f1fd30dc895dbd7193a5877529aad1c81549867a0cbc809ddea72a1b6f2"
+    ],
+    "boundml_cli": {
+     "median_train_seconds": 0.3666217,
+     "train_seconds_range": [
+      0.356026,
+      0.398124
+     ],
+     "metric": "accuracy",
+     "median_test_metric": 0.9596774193548387,
+     "all_test_metric": [
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387
+     ],
+     "median_peak_memory_bytes": 7077888,
+     "peak_memory_range": [
+      7049216,
+      7139328
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "target/release/boundml.exe",
+      "--json",
+      "train",
+      "examples/breast_cancer/mlp.toml",
+      "--checkpoint",
+      "out/bench/train-ck-0",
+      "--quiet"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/breast_cancer/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-0",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.4139643999951659,
+       "peak_memory_bytes": 7065600,
+       "train_seconds": 0.398124,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/breast_cancer/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-1",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.3727926999999909,
+       "peak_memory_bytes": 7086080,
+       "train_seconds": 0.3604017,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/breast_cancer/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-2",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.37920570001006126,
+       "peak_memory_bytes": 7077888,
+       "train_seconds": 0.3666217,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/breast_cancer/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-3",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.36917319998610765,
+       "peak_memory_bytes": 7049216,
+       "train_seconds": 0.356026,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/breast_cancer/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-4",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.39764710000599734,
+       "peak_memory_bytes": 7139328,
+       "train_seconds": 0.38532,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      }
+     ]
+    },
+    "boundml_core_in_memory": {
+     "median_train_seconds": 0.0089472,
+     "train_seconds_range": [
+      0.008838,
+      0.0091499
+     ],
+     "metric": "accuracy",
+     "median_test_metric": 0.9596774193548387,
+     "all_test_metric": [
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387
+     ],
+     "median_peak_memory_bytes": 8036352,
+     "peak_memory_range": [
+      8028160,
+      8040448
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "target/release/train_core.exe",
+      "examples/breast_cancer/mlp.toml",
+      "datasets/breast_cancer/test.csv",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.07050060000619851,
+       "peak_memory_bytes": 8028160,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "accuracy": 0.9596774193548387
+       },
+       "threads": 1,
+       "train_seconds": 0.0089472
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.02173719998972956,
+       "peak_memory_bytes": 8032256,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "accuracy": 0.9596774193548387
+       },
+       "threads": 1,
+       "train_seconds": 0.0091499
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.02186039999651257,
+       "peak_memory_bytes": 8040448,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "accuracy": 0.9596774193548387
+       },
+       "threads": 1,
+       "train_seconds": 0.0089067
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.020961899994290434,
+       "peak_memory_bytes": 8040448,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "accuracy": 0.9596774193548387
+       },
+       "threads": 1,
+       "train_seconds": 0.008838
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.027342100001988,
+       "peak_memory_bytes": 8036352,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "accuracy": 0.9596774193548387
+       },
+       "threads": 1,
+       "train_seconds": 0.0090726
+      }
+     ]
+    },
+    "pytorch_default": {
+     "median_train_seconds": 0.46363410000049043,
+     "train_seconds_range": [
+      0.41034489999583457,
+      1.1153924000100233
+     ],
+     "metric": "accuracy",
+     "median_test_metric": 0.9596774193548387,
+     "all_test_metric": [
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387
+     ],
+     "median_peak_memory_bytes": 285929472,
+     "peak_memory_range": [
+      285470720,
+      286023680
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "python",
+      "bench/py_train.py",
+      "examples/breast_cancer/mlp.toml",
+      "datasets/breast_cancer/test.csv",
+      "default",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "default",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 8.324168100007228,
+       "peak_memory_bytes": 285929472,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 1.1153924000100233,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "default",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.2588060999987647,
+       "peak_memory_bytes": 285941760,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.41034489999583457,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "default",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.237821700007771,
+       "peak_memory_bytes": 285782016,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.42286230000900105,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "default",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.3090366999967955,
+       "peak_memory_bytes": 285470720,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.4675974999991013,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "default",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.527164500002982,
+       "peak_memory_bytes": 286023680,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.46363410000049043,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      }
+     ]
+    },
+    "pytorch_1_thread": {
+     "median_train_seconds": 0.3601712000090629,
+     "train_seconds_range": [
+      0.35125540000444744,
+      0.4021271999954479
+     ],
+     "metric": "accuracy",
+     "median_test_metric": 0.9596774193548387,
+     "all_test_metric": [
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387,
+      0.9596774193548387
+     ],
+     "median_peak_memory_bytes": 285544448,
+     "peak_memory_range": [
+      284794880,
+      286064640
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "python",
+      "bench/py_train.py",
+      "examples/breast_cancer/mlp.toml",
+      "datasets/breast_cancer/test.csv",
+      "1",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "1",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.221367599995574,
+       "peak_memory_bytes": 286064640,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.36236749999807216,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "1",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.2925861999974586,
+       "peak_memory_bytes": 285544448,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.35125540000444744,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "1",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.403092500011553,
+       "peak_memory_bytes": 285687808,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.4021271999954479,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "1",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.352424800003064,
+       "peak_memory_bytes": 284794880,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.3601712000090629,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/breast_cancer/mlp.toml",
+        "datasets/breast_cancer/test.csv",
+        "1",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.2426925000036135,
+       "peak_memory_bytes": 285229056,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.35869999999704305,
+       "test": {
+        "accuracy": 0.9596774193548387
+       }
+      }
+     ]
+    }
+   }
+  },
+  "wine_quality": {
+   "model_identity": {
+    "package_manifest_sha256": "5302022164ea4045c54016a74bce79f0d91afa96e82f954478c4c4a6b1f58fe8",
+    "package_weights_sha256": "dc75582640686124be0f2e840d9fb9fdb36dc4ac22c72ec110a275554d01645a",
+    "onnx_sha256": "3e6be3cd381eb3203d2e9f05cc199269101865fd36605fd677cd1a70d246c7e5",
+    "test_csv_sha256": "7c38008b72cb802e0a74551edc48f861f3196241a2b7a094924227e54ea4374d",
+    "config": "examples/wine_quality/mlp.toml"
+   },
+   "inference": {
+    "boundml": {
+     "wall_s": 4.019630900002085,
+     "parity_max_abs_error": 0.0,
+     "parity_outputs_checked": 984,
+     "batch256_core_rows_per_s": 6759012.963948145,
+     "batch256_e2e_rows_per_s": 6269793.9049892565,
+     "latency_core_us": {
+      "p50": 0.4,
+      "p95": 0.4,
+      "p99": 0.5
+     },
+     "latency_e2e_us": {
+      "p50": 0.4,
+      "p95": 0.5,
+      "p99": 0.5
+     },
+     "load_s": 0.0005287,
+     "planned_tensor_bytes": 69252,
+     "preprocess_us_per_row": {
+      "p50": 0.0,
+      "p95": 0.1,
+      "p99": 0.1
+     },
+     "runtime": "boundml",
+     "threads": 1,
+     "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+     "cold_start_s": 0.005694399995263666,
+     "peak_memory_bytes": 5902336,
+     "spread": {
+      "wall_s": [
+       4.019178899994586,
+       4.0205128000088735
+      ],
+      "parity_max_abs_error": [
+       0.0,
+       0.0
+      ],
+      "parity_outputs_checked": [
+       984,
+       984
+      ],
+      "batch256_core_rows_per_s": [
+       6549800.232676881,
+       6814124.526974545
+      ],
+      "batch256_e2e_rows_per_s": [
+       6185819.812954094,
+       6283989.268872972
+      ],
+      "latency_core_us": {
+       "p50": [
+        0.4,
+        0.4
+       ],
+       "p95": [
+        0.4,
+        0.5
+       ],
+       "p99": [
+        0.4,
+        0.7
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        0.4,
+        0.4
+       ],
+       "p95": [
+        0.4,
+        0.5
+       ],
+       "p99": [
+        0.5,
+        0.5
+       ]
+      },
+      "load_s": [
+       0.0005237,
+       0.0005901
+      ],
+      "planned_tensor_bytes": [
+       69252,
+       69252
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        0.0,
+        0.1
+       ],
+       "p95": [
+        0.1,
+        0.1
+       ],
+       "p99": [
+        0.1,
+        0.1
+       ]
+      },
+      "runtime": null,
+      "threads": [
+       1,
+       1
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       0.005420300003606826,
+       0.006615999998757616
+      ],
+      "peak_memory_bytes": [
+       5894144,
+       5959680
+      ]
+     },
+     "command": [
+      "target/release/infer.exe",
+      "out/bench/wine_quality.boundml",
+      "datasets/wine_red/test.csv",
+      "out/bench/wine_quality.parity.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.019630900002085,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 984,
+       "batch256_core_rows_per_s": 6549800.232676881,
+       "batch256_e2e_rows_per_s": 6185819.812954094,
+       "latency_core_us": {
+        "p50": 0.4,
+        "p95": 0.5,
+        "p99": 0.5
+       },
+       "latency_e2e_us": {
+        "p50": 0.4,
+        "p95": 0.5,
+        "p99": 0.5
+       },
+       "load_s": 0.0005336,
+       "planned_tensor_bytes": 69252,
+       "preprocess_us_per_row": {
+        "p50": 0.0,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.005448800002341159,
+       "peak_memory_bytes": 5959680
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.0205128000088735,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 984,
+       "batch256_core_rows_per_s": 6807204.44310024,
+       "batch256_e2e_rows_per_s": 6269793.9049892565,
+       "latency_core_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.4
+       },
+       "latency_e2e_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.5
+       },
+       "load_s": 0.0005237,
+       "planned_tensor_bytes": 69252,
+       "preprocess_us_per_row": {
+        "p50": 0.0,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.006615999998757616,
+       "peak_memory_bytes": 5910528
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.020179500002996,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 984,
+       "batch256_core_rows_per_s": 6814124.526974545,
+       "batch256_e2e_rows_per_s": 6283989.268872972,
+       "latency_core_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.7
+       },
+       "latency_e2e_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.5
+       },
+       "load_s": 0.0005901,
+       "planned_tensor_bytes": 69252,
+       "preprocess_us_per_row": {
+        "p50": 0.1,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.006183300007251091,
+       "peak_memory_bytes": 5902336
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.019178899994586,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 984,
+       "batch256_core_rows_per_s": 6723627.282296243,
+       "batch256_e2e_rows_per_s": 6283933.656438277,
+       "latency_core_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.5
+       },
+       "latency_e2e_us": {
+        "p50": 0.4,
+        "p95": 0.5,
+        "p99": 0.5
+       },
+       "load_s": 0.0005287,
+       "planned_tensor_bytes": 69252,
+       "preprocess_us_per_row": {
+        "p50": 0.0,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.005694399995263666,
+       "peak_memory_bytes": 5894144
+      },
+      {
+       "command": [
+        "target/release/infer.exe",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.0191964999976335,
+       "parity_max_abs_error": 0.0,
+       "parity_outputs_checked": 984,
+       "batch256_core_rows_per_s": 6759012.963948145,
+       "batch256_e2e_rows_per_s": 6210127.321877692,
+       "latency_core_us": {
+        "p50": 0.4,
+        "p95": 0.4,
+        "p99": 0.5
+       },
+       "latency_e2e_us": {
+        "p50": 0.4,
+        "p95": 0.5,
+        "p99": 0.5
+       },
+       "load_s": 0.0005252,
+       "planned_tensor_bytes": 69252,
+       "preprocess_us_per_row": {
+        "p50": 0.0,
+        "p95": 0.1,
+        "p99": 0.1
+       },
+       "runtime": "boundml",
+       "threads": 1,
+       "unavoidable_copies": "model only: predict_into copies the f32 input into the planned arena",
+       "cold_start_s": 0.005420300003606826,
+       "peak_memory_bytes": 5898240
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    },
+    "pytorch_eager": {
+     "wall_s": 6.037389699995401,
+     "parity_max_abs_error": 9.5367431640625e-07,
+     "parity_outputs_checked": 984,
+     "runtime": "torch",
+     "threads": 8,
+     "import_s": 1.3368961000087438,
+     "load_s": 0.003046900004846975,
+     "preprocess_us_per_row": {
+      "p50": 2.3,
+      "p95": 3.7,
+      "p99": 4.1
+     },
+     "latency_core_us": {
+      "p50": 27.5,
+      "p95": 40.6,
+      "p99": 53.3
+     },
+     "latency_e2e_us": {
+      "p50": 31.5,
+      "p95": 35.6,
+      "p99": 51.8
+     },
+     "batch256_core_rows_per_s": 4972948.087037017,
+     "batch256_e2e_rows_per_s": 3921155.895412412,
+     "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+     "cold_start_s": 1.377432499997667,
+     "peak_memory_bytes": 211775488,
+     "spread": {
+      "wall_s": [
+       5.980610800004797,
+       6.119627199994284
+      ],
+      "parity_max_abs_error": [
+       9.5367431640625e-07,
+       9.5367431640625e-07
+      ],
+      "parity_outputs_checked": [
+       984,
+       984
+      ],
+      "runtime": null,
+      "threads": [
+       8,
+       8
+      ],
+      "import_s": [
+       1.2895710000011604,
+       1.3623609999922337
+      ],
+      "load_s": [
+       0.003045099991140887,
+       0.0036955999967176467
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        2.3,
+        3.6
+       ],
+       "p95": [
+        2.4,
+        4.0
+       ],
+       "p99": [
+        3.8,
+        4.3
+       ]
+      },
+      "latency_core_us": {
+       "p50": [
+        27.3,
+        38.5
+       ],
+       "p95": [
+        38.9,
+        42.7
+       ],
+       "p99": [
+        44.7,
+        61.1
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        31.2,
+        31.8
+       ],
+       "p95": [
+        34.6,
+        44.2
+       ],
+       "p99": [
+        42.5,
+        56.3
+       ]
+      },
+      "batch256_core_rows_per_s": [
+       4134994.515075022,
+       5581253.6759016765
+      ],
+      "batch256_e2e_rows_per_s": [
+       3811733.197249856,
+       4176831.676819026
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       1.328705699997954,
+       1.4037854999914998
+      ],
+      "peak_memory_bytes": [
+       211394560,
+       212054016
+      ]
+     },
+     "command": [
+      "python",
+      "bench/py_infer.py",
+      "torch",
+      "out/bench/wine_quality.boundml",
+      "datasets/wine_red/test.csv",
+      "out/bench/wine_quality.parity.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.119627199994284,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3623609999922337,
+       "load_s": 0.0036955999967176467,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 2.4,
+        "p99": 4.1
+       },
+       "latency_core_us": {
+        "p50": 38.5,
+        "p95": 39.4,
+        "p99": 44.7
+       },
+       "latency_e2e_us": {
+        "p50": 31.8,
+        "p95": 35.4,
+        "p99": 46.0
+       },
+       "batch256_core_rows_per_s": 4134994.515075022,
+       "batch256_e2e_rows_per_s": 3860179.800941764,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.4037854999914998,
+       "peak_memory_bytes": 212054016
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.011988600002951,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3368961000087438,
+       "load_s": 0.0033258000039495528,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 3.9,
+        "p99": 4.3
+       },
+       "latency_core_us": {
+        "p50": 27.3,
+        "p95": 42.7,
+        "p99": 54.6
+       },
+       "latency_e2e_us": {
+        "p50": 31.6,
+        "p95": 36.3,
+        "p99": 56.3
+       },
+       "batch256_core_rows_per_s": 4848326.062485703,
+       "batch256_e2e_rows_per_s": 4176831.676819026,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.377432499997667,
+       "peak_memory_bytes": 211427328
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.037389699995401,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.2895710000011604,
+       "load_s": 0.003045099991140887,
+       "preprocess_us_per_row": {
+        "p50": 3.6,
+        "p95": 3.7,
+        "p99": 3.8
+       },
+       "latency_core_us": {
+        "p50": 28.3,
+        "p95": 41.1,
+        "p99": 61.1
+       },
+       "latency_e2e_us": {
+        "p50": 31.2,
+        "p95": 35.6,
+        "p99": 51.8
+       },
+       "batch256_core_rows_per_s": 4972948.087037017,
+       "batch256_e2e_rows_per_s": 3811733.197249856,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.328705699997954,
+       "peak_memory_bytes": 211394560
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 5.980610800004797,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3071960999950534,
+       "load_s": 0.003045399993425235,
+       "preprocess_us_per_row": {
+        "p50": 3.6,
+        "p95": 3.7,
+        "p99": 3.8
+       },
+       "latency_core_us": {
+        "p50": 27.5,
+        "p95": 38.9,
+        "p99": 50.1
+       },
+       "latency_e2e_us": {
+        "p50": 31.3,
+        "p95": 34.6,
+        "p99": 42.5
+       },
+       "batch256_core_rows_per_s": 5470038.701211735,
+       "batch256_e2e_rows_per_s": 4138411.369505515,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.3464511000056518,
+       "peak_memory_bytes": 211775488
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "torch",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 6.088072800004738,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "torch",
+       "threads": 8,
+       "import_s": 1.3413947999943048,
+       "load_s": 0.003046900004846975,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 4.0,
+        "p99": 4.3
+       },
+       "latency_core_us": {
+        "p50": 27.5,
+        "p95": 40.6,
+        "p99": 53.3
+       },
+       "latency_e2e_us": {
+        "p50": 31.5,
+        "p95": 44.2,
+        "p99": 52.4
+       },
+       "batch256_core_rows_per_s": 5581253.6759016765,
+       "batch256_e2e_rows_per_s": 3921155.895412412,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 1.3824984000093536,
+       "peak_memory_bytes": 211918848
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    },
+    "onnxruntime": {
+     "wall_s": 4.352307399996789,
+     "parity_max_abs_error": 9.5367431640625e-07,
+     "parity_outputs_checked": 984,
+     "runtime": "ort",
+     "threads": "ort-default",
+     "import_s": 0.15599420000216924,
+     "load_s": 0.009153999999398366,
+     "preprocess_us_per_row": {
+      "p50": 2.4,
+      "p95": 3.7,
+      "p99": 4.0
+     },
+     "latency_core_us": {
+      "p50": 7.8,
+      "p95": 8.1,
+      "p99": 11.5
+     },
+     "latency_e2e_us": {
+      "p50": 10.5,
+      "p95": 11.1,
+      "p99": 13.5
+     },
+     "batch256_core_rows_per_s": 13352921.276524905,
+     "batch256_e2e_rows_per_s": 9390149.781106306,
+     "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+     "cold_start_s": 0.207554100008565,
+     "peak_memory_bytes": 52752384,
+     "spread": {
+      "wall_s": [
+       4.321166299996548,
+       4.377502500006813
+      ],
+      "parity_max_abs_error": [
+       9.5367431640625e-07,
+       9.5367431640625e-07
+      ],
+      "parity_outputs_checked": [
+       984,
+       984
+      ],
+      "runtime": null,
+      "threads": null,
+      "import_s": [
+       0.13825489999726415,
+       0.1588828999956604
+      ],
+      "load_s": [
+       0.008360399995581247,
+       0.011057900002924725
+      ],
+      "preprocess_us_per_row": {
+       "p50": [
+        2.3,
+        2.4
+       ],
+       "p95": [
+        3.5,
+        4.4
+       ],
+       "p99": [
+        3.8,
+        4.7
+       ]
+      },
+      "latency_core_us": {
+       "p50": [
+        7.6,
+        8.3
+       ],
+       "p95": [
+        7.8,
+        8.5
+       ],
+       "p99": [
+        10.6,
+        11.9
+       ]
+      },
+      "latency_e2e_us": {
+       "p50": [
+        10.2,
+        11.0
+       ],
+       "p95": [
+        10.4,
+        12.3
+       ],
+       "p99": [
+        13.0,
+        17.9
+       ]
+      },
+      "batch256_core_rows_per_s": [
+       12340623.221997986,
+       14024572.870265597
+      ],
+      "batch256_e2e_rows_per_s": [
+       9182617.918476524,
+       9593857.840786017
+      ],
+      "unavoidable_copies": null,
+      "cold_start_s": [
+       0.18303499999456108,
+       0.22482740000123158
+      ],
+      "peak_memory_bytes": [
+       52383744,
+       52858880
+      ]
+     },
+     "command": [
+      "python",
+      "bench/py_infer.py",
+      "ort",
+      "out/bench/wine_quality.boundml",
+      "datasets/wine_red/test.csv",
+      "out/bench/wine_quality.parity.json",
+      "out/bench/wine_quality.onnx"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json",
+        "out/bench/wine_quality.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.377502500006813,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.15599420000216924,
+       "load_s": 0.011057900002924725,
+       "preprocess_us_per_row": {
+        "p50": 2.4,
+        "p95": 4.4,
+        "p99": 4.7
+       },
+       "latency_core_us": {
+        "p50": 8.3,
+        "p95": 8.5,
+        "p99": 11.5
+       },
+       "latency_e2e_us": {
+        "p50": 11.0,
+        "p95": 12.3,
+        "p99": 17.9
+       },
+       "batch256_core_rows_per_s": 13024818.502308413,
+       "batch256_e2e_rows_per_s": 9258374.715310797,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.22482740000123158,
+       "peak_memory_bytes": 52858880
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json",
+        "out/bench/wine_quality.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.324165699988953,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.14000629998918157,
+       "load_s": 0.008701099999598227,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 3.7,
+        "p99": 4.0
+       },
+       "latency_core_us": {
+        "p50": 7.8,
+        "p95": 8.1,
+        "p99": 11.9
+       },
+       "latency_e2e_us": {
+        "p50": 10.4,
+        "p95": 10.6,
+        "p99": 13.5
+       },
+       "batch256_core_rows_per_s": 13996835.620894365,
+       "batch256_e2e_rows_per_s": 9390149.781106306,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.18465139999170788,
+       "peak_memory_bytes": 52768768
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json",
+        "out/bench/wine_quality.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.352307399996789,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.1588828999956604,
+       "load_s": 0.009153999999398366,
+       "preprocess_us_per_row": {
+        "p50": 2.4,
+        "p95": 3.6,
+        "p99": 4.2
+       },
+       "latency_core_us": {
+        "p50": 7.8,
+        "p95": 8.0,
+        "p99": 11.1
+       },
+       "latency_e2e_us": {
+        "p50": 10.5,
+        "p95": 11.4,
+        "p99": 16.0
+       },
+       "batch256_core_rows_per_s": 12340623.221997986,
+       "batch256_e2e_rows_per_s": 9414620.224444736,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.20786120000411756,
+       "peak_memory_bytes": 52383744
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json",
+        "out/bench/wine_quality.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.321166299996548,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.13825489999726415,
+       "load_s": 0.008360399995581247,
+       "preprocess_us_per_row": {
+        "p50": 2.3,
+        "p95": 3.5,
+        "p99": 3.8
+       },
+       "latency_core_us": {
+        "p50": 7.6,
+        "p95": 7.8,
+        "p99": 11.7
+       },
+       "latency_e2e_us": {
+        "p50": 10.2,
+        "p95": 10.4,
+        "p99": 13.0
+       },
+       "batch256_core_rows_per_s": 14024572.870265597,
+       "batch256_e2e_rows_per_s": 9593857.840786017,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.18303499999456108,
+       "peak_memory_bytes": 52752384
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_infer.py",
+        "ort",
+        "out/bench/wine_quality.boundml",
+        "datasets/wine_red/test.csv",
+        "out/bench/wine_quality.parity.json",
+        "out/bench/wine_quality.onnx"
+       ],
+       "exit_status": 0,
+       "wall_s": 4.353647500000079,
+       "parity_max_abs_error": 9.5367431640625e-07,
+       "parity_outputs_checked": 984,
+       "runtime": "ort",
+       "threads": "ort-default",
+       "import_s": 0.1587121000047773,
+       "load_s": 0.009263100000680424,
+       "preprocess_us_per_row": {
+        "p50": 2.4,
+        "p95": 3.9,
+        "p99": 4.0
+       },
+       "latency_core_us": {
+        "p50": 8.1,
+        "p95": 8.3,
+        "p99": 10.6
+       },
+       "latency_e2e_us": {
+        "p50": 10.8,
+        "p95": 11.1,
+        "p99": 13.3
+       },
+       "batch256_core_rows_per_s": 13352921.276524905,
+       "batch256_e2e_rows_per_s": 9182617.918476524,
+       "unavoidable_copies": "model only: none in user code (float32 inputs pre-built)",
+       "cold_start_s": 0.207554100008565,
+       "peak_memory_bytes": 52547584
+      }
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+    }
+   },
+   "sizes": {
+    "boundml_cli_binary_bytes": 4090880,
+    "boundml_package_bytes": 17481,
+    "onnx_model_bytes": 4353,
+    "torch_install_bytes": 515786424,
+    "onnxruntime_install_bytes": 36794661
+   },
+   "training": {
+    "control_file_sha256": [
+     "b766a65202c2433e13e40de8b7fdc3aad44ed30d08c0047a819fd2e8044c4f30"
+    ],
+    "boundml_cli": {
+     "median_train_seconds": 0.343825,
+     "train_seconds_range": [
+      0.2339574,
+      0.4676902
+     ],
+     "metric": "rmse",
+     "median_test_metric": 0.6634776647029015,
+     "all_test_metric": [
+      0.6634776647029015,
+      0.6634776647029015,
+      0.6634776647029015,
+      0.6634776647029015,
+      0.6634776647029015
+     ],
+     "median_peak_memory_bytes": 6918144,
+     "peak_memory_range": [
+      6909952,
+      7041024
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "target/release/boundml.exe",
+      "--json",
+      "train",
+      "examples/wine_quality/mlp.toml",
+      "--checkpoint",
+      "out/bench/train-ck-0",
+      "--quiet"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/wine_quality/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-0",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.48725459999695886,
+       "peak_memory_bytes": 6918144,
+       "train_seconds": 0.4676902,
+       "test": {
+        "rmse": 0.6634776647029015
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/wine_quality/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-1",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.3559965999884298,
+       "peak_memory_bytes": 7041024,
+       "train_seconds": 0.343825,
+       "test": {
+        "rmse": 0.6634776647029015
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/wine_quality/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-2",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.24810780001280364,
+       "peak_memory_bytes": 6918144,
+       "train_seconds": 0.2339574,
+       "test": {
+        "rmse": 0.6634776647029015
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/wine_quality/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-3",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.41992000000027474,
+       "peak_memory_bytes": 6909952,
+       "train_seconds": 0.4050832,
+       "test": {
+        "rmse": 0.6634776647029015
+       }
+      },
+      {
+       "command": [
+        "target/release/boundml.exe",
+        "--json",
+        "train",
+        "examples/wine_quality/mlp.toml",
+        "--checkpoint",
+        "out/bench/train-ck-4",
+        "--quiet"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.2625994000118226,
+       "peak_memory_bytes": 6926336,
+       "train_seconds": 0.2507692,
+       "test": {
+        "rmse": 0.6634776647029015
+       }
+      }
+     ]
+    },
+    "boundml_core_in_memory": {
+     "median_train_seconds": 0.0288757,
+     "train_seconds_range": [
+      0.0285544,
+      0.0295262
+     ],
+     "metric": "rmse",
+     "median_test_metric": 0.6591545154892344,
+     "all_test_metric": [
+      0.6591545154892344,
+      0.6591545154892344,
+      0.6591545154892344,
+      0.6591545154892344,
+      0.6591545154892344
+     ],
+     "median_peak_memory_bytes": 8847360,
+     "peak_memory_range": [
+      8843264,
+      8851456
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "target/release/train_core.exe",
+      "examples/wine_quality/mlp.toml",
+      "datasets/wine_red/test.csv",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.043503599998075515,
+       "peak_memory_bytes": 8847360,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "rmse": 0.6591545154892344
+       },
+       "threads": 1,
+       "train_seconds": 0.0288757
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.04421860000002198,
+       "peak_memory_bytes": 8843264,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "rmse": 0.6591545154892344
+       },
+       "threads": 1,
+       "train_seconds": 0.0285544
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.042884399998001754,
+       "peak_memory_bytes": 8851456,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "rmse": 0.6591545154892344
+       },
+       "threads": 1,
+       "train_seconds": 0.0290661
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.042973799994797446,
+       "peak_memory_bytes": 8851456,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "rmse": 0.6591545154892344
+       },
+       "threads": 1,
+       "train_seconds": 0.0288162
+      },
+      {
+       "command": [
+        "target/release/train_core.exe",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 0.04351800000586081,
+       "peak_memory_bytes": 8847360,
+       "runtime": "boundml-core-in-memory",
+       "test": {
+        "rmse": 0.6591545154892344
+       },
+       "threads": 1,
+       "train_seconds": 0.0295262
+      }
+     ]
+    },
+    "pytorch_default": {
+     "median_train_seconds": 0.8213440000108676,
+     "train_seconds_range": [
+      0.7890901000064332,
+      1.0258318999985931
+     ],
+     "metric": "rmse",
+     "median_test_metric": 0.6591544630683983,
+     "all_test_metric": [
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983
+     ],
+     "median_peak_memory_bytes": 287567872,
+     "peak_memory_range": [
+      287186944,
+      287752192
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "python",
+      "bench/py_train.py",
+      "examples/wine_quality/mlp.toml",
+      "datasets/wine_red/test.csv",
+      "default",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "default",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.8748494000028586,
+       "peak_memory_bytes": 287260672,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 1.0258318999985931,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "default",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.5818365000013728,
+       "peak_memory_bytes": 287186944,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.7890901000064332,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "default",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.6043254999967758,
+       "peak_memory_bytes": 287752192,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.8213440000108676,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "default",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.8140733999898657,
+       "peak_memory_bytes": 287596544,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.8647951000020839,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "default",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.593182800002978,
+       "peak_memory_bytes": 287567872,
+       "runtime": "pytorch",
+       "threads": "default",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.80997760000173,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      }
+     ]
+    },
+    "pytorch_1_thread": {
+     "median_train_seconds": 0.66144820000045,
+     "train_seconds_range": [
+      0.6539312999957474,
+      0.6974389999959385
+     ],
+     "metric": "rmse",
+     "median_test_metric": 0.6591544630683983,
+     "all_test_metric": [
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983,
+      0.6591544630683983
+     ],
+     "median_peak_memory_bytes": 287145984,
+     "peak_memory_range": [
+      286855168,
+      287342592
+     ],
+     "memory_metric": "peak_wset: OS-reported peak working set (high-water mark) of the worker process",
+     "command": [
+      "python",
+      "bench/py_train.py",
+      "examples/wine_quality/mlp.toml",
+      "datasets/wine_red/test.csv",
+      "1",
+      "out/bench/control-0.json"
+     ],
+     "runs": [
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "1",
+        "out/bench/control-0.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.433290799992392,
+       "peak_memory_bytes": 287145984,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.66144820000045,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "1",
+        "out/bench/control-1.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.4353834000066854,
+       "peak_memory_bytes": 287236096,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.6587698000075761,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "1",
+        "out/bench/control-2.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.4154329000011785,
+       "peak_memory_bytes": 286855168,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.6539312999957474,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "1",
+        "out/bench/control-3.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.721028899992234,
+       "peak_memory_bytes": 287342592,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.6974389999959385,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      },
+      {
+       "command": [
+        "python",
+        "bench/py_train.py",
+        "examples/wine_quality/mlp.toml",
+        "datasets/wine_red/test.csv",
+        "1",
+        "out/bench/control-4.json"
+       ],
+       "exit_status": 0,
+       "wall_s": 3.6077661000017542,
+       "peak_memory_bytes": 287047680,
+       "runtime": "pytorch",
+       "threads": "1",
+       "controlled": true,
+       "torch": "2.12.1+cpu",
+       "train_seconds": 0.6626494999945862,
+       "test": {
+        "rmse": 0.6591544630683983
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

@@ -110,8 +110,9 @@ def main() -> None:
         loss_fn = torch.nn.functional.cross_entropy
     bs = t["batch_size"]
     g = torch.Generator().manual_seed(cfg.get("seed", 0))
-    start = time.perf_counter()
+    # Like train_core, the controlled batch order is materialized before the timer starts.
     perms = [torch.tensor(p, dtype=torch.long) for p in control["perms"]] if control else None
+    start = time.perf_counter()
     for epoch in range(t["epochs"]):
         perm = perms[epoch] if perms else torch.randperm(len(xt), generator=g)
         for i in range(0, len(xt), bs):

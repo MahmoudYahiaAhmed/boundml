@@ -56,9 +56,9 @@ def render() -> str:
            f"parentheses where given; one untimed warm-up launch per runtime precedes them. Commit `{env['git_commit'][:7]}`"
            f"{uncommitted(env)}. "
            f"Python interpreter start-up (`python -I -c pass`): **{ms(env['python_interpreter_startup_s'])}**.", "",
-           f"Timing ran only after every runtime's outputs matched BoundML's for every test row at batch sizes "
+           f"Every reported run's outputs matched BoundML's for every test row at batch sizes "
            f"{', '.join(map(str, env['parity']['batch_sizes']))} ({env['parity']['rule']}, atol {env['parity']['atol']:g}, "
-           f"rtol {env['parity']['rtol']:g}). Memory is `{env['inference_memory_metric'].split(':')[0]}`: "
+           f"rtol {env['parity']['rtol']:g}), validated before its timings were accepted. Memory is `{env['inference_memory_metric'].split(':')[0]}`: "
            f"{env['inference_memory_metric'].split(': ', 1)[1]}.", ""]
     for name, d in DATA["datasets"].items():
         inf = d["inference"]
