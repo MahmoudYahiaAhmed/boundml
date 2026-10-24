@@ -7,7 +7,8 @@ GitHub Actions (latest: [run 40139782934](https://github.com/MahmoudYahiaAhmed/b
 [40032964857](https://github.com/MahmoudYahiaAhmed/boundml/actions/runs/40032964857)
 on `main`, `fbad6db`), and locally on Windows 11 and WSL2 Ubuntu 24.04. Not
 production-validated, and no outside users yet. Publication steps and owner
-decisions: [publication-plan.md](publication-plan.md).
+decisions: `docs/publication-plan.md` in the repository (not shipped in release
+archives).
 
 ## Verified locally (Windows 11 x64, Ryzen 7 8700F, Rust 1.94.0)
 
