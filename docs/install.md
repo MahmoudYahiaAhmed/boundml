@@ -10,8 +10,18 @@ no Python, no ML framework, no network access.
 | macOS arm64 (`aarch64-apple-darwin`) | `boundml-<version>-aarch64-apple-darwin.tar.gz` | built and smoke-tested in CI (`package-smoke`); not yet attached to a release |
 | Anything with Rust 1.94+ | build from source (below) | tested in CI on Windows x86_64, Linux x86_64 and macOS arm64 |
 
-Archives are attached to this repository's [Releases](../../../releases) page. Each
-archive has a `.sha256` file, and the release has a combined `SHA256SUMS`.
+**No release has been published yet** and nothing is on crates.io or PyPI. Until
+then, get an archive in one of these ways:
+
+- **Build it locally** for your own platform: `python scripts/release.py --out dist`
+  from a checkout (Rust 1.94+). It writes the archive, its `.sha256`, `SHA256SUMS`, and
+  a smoke-test report after extracting the archive into a folder whose path has spaces.
+- **Download it from a CI run** (`package-smoke` job, artifact `archive-<os>`) on the
+  repository's Actions page; repository access is required while it is private.
+
+Once a release exists, its archives will be attached to the repository's
+[Releases](../../../releases) page with the same `.sha256` and `SHA256SUMS` files.
+Every archive has a `.sha256` file; check it before extracting (below).
 The archive includes the docs and example sources for reading; building the Rust
 examples (`examples/embed`, `examples/power-app`) needs a checkout of the repository.
 

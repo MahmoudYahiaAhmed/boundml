@@ -14,7 +14,10 @@ Please **do not** open a public issue for security problems.
 
 Report privately through this repository's **Security → Report a vulnerability**
 form (GitHub private vulnerability reporting). Only maintainers can see these
-reports. Include:
+reports. **While the repository is private this form is not available:** GitHub offers
+it only on public repositories, and the maintainer will enable it when the repository
+is made public. Until then, report to the maintainer through a private channel you
+already share; do not open an issue. Include:
 
 - the BoundML version (`boundml version`) and platform;
 - a minimal package, CSV or HTTP request that reproduces the problem;

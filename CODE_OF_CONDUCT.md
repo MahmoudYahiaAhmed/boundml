@@ -36,7 +36,11 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement privately through this repository's **Security → Report a vulnerability** form (GitHub private reporting), which only maintainers can read. Mark the report "Code of conduct". All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported privately to the community leaders responsible for enforcement at:
+
+**Conduct contact: not yet set.** The maintainer will add a private contact address here before the repository is made public. <!-- OWNER: supply a private conduct contact (an email address or form that only maintainers read). Do not reuse the security-vulnerability form for conduct reports. -->
+
+All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 

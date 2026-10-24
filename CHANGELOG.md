@@ -13,6 +13,18 @@ breaking changes; they are called out under **Breaking**.
   DataFrames, dict rows or NumPy arrays, with predictions bitwise identical to the
   CLI. Errors raise `boundml.BoundMLError` with the stable `BML-xxxx` code.
 
+### Fixed
+- Python `Model.predict` on a pandas DataFrame or dict rows no longer fails when
+  the input has non-numeric columns that are not features (such as a string label
+  column); only feature columns are converted, unknown columns follow the schema's
+  `extra_columns` policy, and a non-numeric feature value raises `BoundMLError`
+  `BML-D005`.
+- Benchmark harness: parity files must contain exactly batch sizes 1, 7 and 64 with
+  the expected number of finite values; workers are settled on every failure path;
+  PyTorch builds its controlled batch order before its training timer.
+- Server: a rejected request's body is drained for at most 250 ms and 64 KiB, so an
+  overload 503 can reach the client (reproduced Windows reset, error 10053).
+
 ### Removed
 - Launch drafts (`launch/`), internal planning notes (`docs/decision.md`,
   `docs/research.md`, `docs/design-partner-plan.md`, `docs/benchmark-targets.md`),

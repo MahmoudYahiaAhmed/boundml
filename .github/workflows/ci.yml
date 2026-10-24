@@ -64,6 +64,13 @@ jobs:
         with:
           python-version: "3.13"
       - run: python scripts/release.py --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-${{ matrix.os }}
+          path: |
+            dist/boundml-*
+            dist/SHA256SUMS
+            dist/smoke-*.json
 
   migration:
     runs-on: ubuntu-latest

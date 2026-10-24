@@ -11,34 +11,42 @@ x86_64 and macOS arm64; they are not on PyPI yet.
 
 ## Install
 
-From a checkout of the repository (Rust 1.94 and Python ≥ 3.9):
+Not on PyPI yet. Install from a checkout (builds a wheel; needs Rust 1.94+) or from a
+wheel file built by CI or by `maturin build --release`:
 
 ```bash
-pip install maturin
-pip install ./python
+pip install ./python                                   # from the repository root
+pip install boundml-0.1.0-cp39-abi3-win_amd64.whl      # or a built wheel
 ```
+
+One abi3 wheel per platform serves Python 3.9 and later. Verified on Python 3.11–3.14
+(Windows), 3.12 (Linux) and 3.13 (CI on Windows, Linux and macOS); 3.9 and 3.10 have
+not been run. Linux wheels built on current runners need glibc 2.34 or newer.
 
 ## Use
 
+Run this from the repository root: the example config and the data it names live
+there (config paths are relative to the config file).
+
 ```python
 import boundml
+import pandas as pd
 
-# Train from a TOML config (examples/breast_cancer/linear.toml in the repository).
+# Train from a TOML config, then compare with a constant baseline on held-out data.
 result = boundml.train("examples/breast_cancer/linear.toml", "out/bc/ckpt")
-print(result["history"][-1])
+print(result["completed"], result["global_step"])
+metrics = boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv")
+print(metrics["model"]["accuracy"], metrics["baseline"]["accuracy"])   # 0.9596... 0.5806...
 
-# Metrics on held-out data, next to a constant baseline.
-print(boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv"))
-
-# Package it: weights + schema + preprocessing + self-tests, verified after writing.
+# Package it: weights + schema + fitted preprocessing + self-tests, verified after writing.
 model = boundml.pack("out/bc/ckpt", "out/bc/model.boundml")
 
-# Later, anywhere:
+# Later, from anywhere: load and predict from raw values.
 model = boundml.load("out/bc/model.boundml")
-model.verify()                       # {"vectors": ..., "passed": True, ...}
-model.predict(df)                    # pandas DataFrame, columns matched by name
-model.predict({"radius_mean": 14.1, "texture_mean": None, ...})   # one row
-model.predict(x)                     # NumPy (rows, n_features) in model.features order
+print(model.verify()["passed"])                     # True
+df = pd.read_csv("datasets/breast_cancer/test.csv") # extra columns (id, diagnosis) are ignored
+p = model.predict(df)                               # float32, shape (124, 1): P(class "M")
+print(model.outputs, p.shape, p[:3, 0])
 ```
 
 Inputs are **raw values**: the package applies the preprocessing fitted during

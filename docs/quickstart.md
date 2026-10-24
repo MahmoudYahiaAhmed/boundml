@@ -1,9 +1,13 @@
 # Quickstart
 
-Two paths, both from a release archive or a source install (see [install.md](install.md)):
+Two paths, both from an archive or a source install (see [install.md](install.md);
+no release has been published yet, so archives are built locally or taken from CI):
 
 1. **CLI**: train from CSV, evaluate, package and predict.
 2. **Rust**: load the resulting package inside your own program.
+
+From Python, the same steps are `boundml.train`, `boundml.evaluate`, `boundml.pack` and
+`Model.predict`: see [python/README.md](../python/README.md).
 
 Outputs below are copied from real runs (the core steps are recorded in `assets/demo-transcript.txt`). Timings
 differ between machines; metrics are deterministic for a given binary and platform.

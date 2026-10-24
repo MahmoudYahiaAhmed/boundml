@@ -2,14 +2,26 @@
   <img src="assets/banner.png" width="100%" alt="BoundML — Small models. Simple deployment. Native Rust. Train from CSV, package preprocessing and weights together, and run predictions inside your Rust application.">
 </p>
 
-**BoundML** trains small dense models from CSV and ships them as one checked
-package: feature schema, fitted preprocessing, weights, self-tests and a planned
-tensor-memory budget. You load that package inside your Rust application and predict
-with no Python, no ML framework and no network.
+**Small numeric models, packaged with their preprocessing and schema, for
+straightforward deployment in Rust applications.**
 
-It is for Rust developers who embed **small numerical prediction models** in an
-application or local service: linear/logistic regression and small MLPs on tabular
-features. CPU only. **Early release (0.1.0).** [What is verified](docs/release-status.md)
+BoundML trains small dense models (linear, logistic/softmax regression, small MLPs)
+from CSV and writes them as one checked package directory: feature schema, fitted
+preprocessing, weights, self-tests and a planned tensor-memory budget. Your Rust
+application loads that package and predicts from **raw** feature values, with no
+Python, ML framework or network at run time. A Python package wraps the same native
+code for training and scripting.
+
+**Who it is for:** developers who ship a numeric prediction (an estimate, a score, a
+classification from a handful of measured values) inside a Rust binary or local
+service, and who want the preprocessing, the feature names and a memory limit to
+travel with the model instead of being re-implemented next to it.
+
+**What it is not:** a general deep-learning framework or a faster ONNX runtime.
+Large or GPU models, images, text, trees and categorical features are out of scope.
+On large batches ONNX Runtime is faster (see [Evidence](#evidence)). **Status:
+private beta (0.1.0)**, CPU only, no published release yet:
+[what is verified](docs/release-status.md).
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3DD9B3)](#license)
 
@@ -18,29 +30,44 @@ features. CPU only. **Early release (0.1.0).** [What is verified](docs/release-s
 </p>
 <sub>Recorded from the real binary. Command typing speed is synthetic and pauses are capped at 1.2 s; output is unedited (<a href="assets/demo-transcript.txt">transcript</a>, <a href="assets/demo.cast">asciinema cast</a>).</sub>
 
+## Choose your path
+
+| You want to… | Use | Start at |
+|---|---|---|
+| Train from a CSV and predict, from a terminal | `boundml` CLI (one executable) | [Quickstart](#quickstart-csv--model--prediction) |
+| Predict inside a Rust program | the `boundml-artifact` crate | [Embed it in Rust](#embed-it-in-a-rust-application) |
+| Train or predict from Python (pandas, NumPy) | the `boundml` Python package | [Use it from Python](#use-it-from-python) |
+
+All three run the same Rust code and give bitwise-identical predictions for the same
+package (checked in CI). A package trained with any of them works with the others.
+
 ## Install
 
-**Recommended:** download the archive for your platform from this repository's
-[Releases](../../releases) page, check its `.sha256`, extract it, and run `boundml`
-from the extracted folder. It is one executable with no dependencies. Archives for
-Windows x86_64, Linux x86_64 and macOS arm64 are built and smoke-tested in CI; no
-release has been published yet. Commands for PowerShell and bash, plus update and removal steps, are
-in [docs/install.md](docs/install.md).
+Nothing is on crates.io or PyPI yet, and no GitHub release has been published. Today
+there are three ways in, all from this repository:
 
-From a checkout instead (Rust 1.94+): `cargo install --path crates/boundml-cli --locked`.
+| What | How | Needs |
+|---|---|---|
+| CLI from a release archive | build it with `python scripts/release.py --out dist` (or take the `package-smoke` artifact of a CI run), check its `.sha256`, extract it, run `boundml` from the folder | nothing at run time; one executable |
+| CLI from source | `cargo install --path crates/boundml-cli --locked` | Rust 1.94+ |
+| Python package | `pip install ./python` (builds a wheel), or `pip install` a wheel built by CI or `maturin build` | Rust 1.94+ to build; Python ≥ 3.9 |
 
-The commands below are written as `boundml …`. In **PowerShell**, from the extracted
-folder, type `.\boundml …` instead, or add the folder to `PATH` as shown in
-[docs/install.md](docs/install.md).
+Archives and wheels for Windows x86_64, Linux x86_64 and macOS arm64 are built and
+tested in CI. Commands for PowerShell and bash, updating and removal:
+[docs/install.md](docs/install.md). Once a release exists, the archive becomes the
+recommended path.
+
+The commands below are written as `boundml …`. In **PowerShell**, from an extracted
+archive folder, type `.\boundml …` instead, or add the folder to `PATH`.
 
 ```bash
 boundml --version
 ```
 ```text
-boundml 0.1.0 (revision 1f4146b7fe, x86_64-pc-windows-msvc)
+boundml 0.1.0 (revision 42abd73cb1, x86_64-pc-windows-msvc)
 ```
-The revision (source commit) and target in parentheses identify your build and will differ. A build from a
-source archive without `.git` prints `revision unknown`.
+The revision (source commit) and target identify your build and will differ. A build
+from a source archive without `.git` prints `revision unknown`.
 
 ## Quickstart: CSV → model → prediction
 
@@ -101,33 +128,55 @@ in [docs/errors.md](docs/errors.md). Full walkthrough with real datasets:
 
 ## Use it from Python
 
-The `boundml` Python package runs the same native code, so predictions are bitwise
-identical to the CLI. Build and install it from a checkout (needs Rust 1.94):
+The `boundml` Python package runs the same native code as the CLI. Install it from a
+checkout (this builds a wheel; Rust 1.94+ required) or from a built wheel file:
 
 ```bash
-pip install maturin
-pip install ./python
+pip install ./python                                  # from the repository root
+pip install boundml-0.1.0-cp39-abi3-win_amd64.whl     # or a wheel built by CI / maturin
 ```
+
+Predict with the package from the quickstart above. This works from any directory;
+only the package path matters:
+
+```python
+import boundml
+
+model = boundml.load("demo/model.boundml")
+print(model.features)   # ['temperature', 'humidity', 'load']
+print(model.predict({"temperature": 20, "humidity": None, "load": 0.5}))   # [4.821724]
+```
+
+`predict` also takes a list of dicts, a pandas DataFrame (columns matched by name) or
+a NumPy array in `model.features` order, and returns a float32 array of shape
+`(rows, outputs)`. Values are raw; `None`/NaN means missing and follows the schema's
+missing-value policy. Errors raise `boundml.BoundMLError` with a stable `code`.
+
+Training works the same way. This example uses a config from the repository, so run
+it from the repository root (the config's data paths are relative to the config):
 
 ```python
 import boundml
 
 boundml.train("examples/breast_cancer/linear.toml", "out/bc/ckpt")
-print(boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv")["model"])
+print(boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv")["model"]["accuracy"])   # 0.959677...
 model = boundml.pack("out/bc/ckpt", "out/bc/model.boundml")
-
-model = boundml.load("out/bc/model.boundml")
-model.predict(df)          # pandas DataFrame (columns by name), dict rows, or NumPy
 ```
 
-Inputs are raw values; the package applies its fitted preprocessing. Errors raise
-`boundml.BoundMLError` with a stable `code`. Details: [python/README.md](python/README.md).
+Details and the full API: [python/README.md](python/README.md).
 
 ## Embed it in a Rust application
 
+The `boundml-artifact` crate loads packages and predicts; it has no training, HTTP or
+async dependencies. It is not on crates.io yet, so depend on it from a checkout:
+
 ```toml
 [dependencies]
-boundml-artifact = { path = "crates/boundml-artifact" }   # not yet on crates.io
+# a local checkout of this repository:
+boundml-artifact = { path = "/path/to/boundml/crates/boundml-artifact" }
+# or, with read access to this private repository (Cargo uses your git credentials
+# when CARGO_NET_GIT_FETCH_WITH_CLI=true):
+# boundml-artifact = { git = "https://github.com/MahmoudYahiaAhmed/boundml" }
 ```
 
 ```rust
@@ -137,19 +186,22 @@ use std::sync::Arc;
 fn main() -> Result<(), boundml_artifact::ArtifactError> {
     // Integrity, format version, graph rules and the memory plan are checked here.
     let package = Arc::new(Package::load("demo/model.boundml".as_ref())?);
-    let mut predictor = package.predictor(1)?;            // one per worker thread
+    // One predictor per worker thread. Each holds one of the package's declared
+    // sessions (`deploy.sessions`); creating more than that fails with BML-A010.
+    let mut predictor = package.predictor(1)?;
 
-    let mut raw = vec![None; predictor.n_features()];     // features by name; None = missing
+    let mut raw = vec![None; predictor.n_features()]; // features by name; None = missing
     predictor.fill_named([("temperature", Some(20.0)), ("humidity", None), ("load", Some(0.5))], &mut raw, 0)?;
     let mut out = [0.0f32; 1];
-    predictor.predict_raw(&raw, 1, &mut out)?;            // preprocessing + model, no heap allocation
-    println!("power = {}", out[0]);
+    predictor.predict_raw(&raw, 1, &mut out)?; // preprocessing + model, no heap allocation
+    println!("power = {}", out[0]); // power = 4.821724
     Ok(())
 }
 ```
 
-Runnable versions: [`examples/embed`](examples/embed/src/main.rs) (from a checkout:
-`cargo run -p boundml-embed-example -- <path to>/demo/model.boundml temperature=20 humidity= load=0.5`) and
+Runnable versions in this repository: [`examples/embed`](examples/embed/src/main.rs)
+(`cargo run -p boundml-embed-example -- demo/model.boundml temperature=20 humidity= load=0.5`,
+which also runs two concurrent sessions within the declared limit) and
 [`train_and_embed`](crates/boundml-train/examples/train_and_embed.rs), which trains
 from Rust code.
 
@@ -205,12 +257,16 @@ runs each. Full tables, methodology and raw JSON: [docs/benchmarks.md](docs/benc
 **ONNX Runtime is faster on large batches.** BoundML's kernels are simple and
 single-threaded: model only, it reaches 42–51% of ONNX Runtime's batch-256
 throughput (67–70% with preprocessing included). It is ahead on start-up, memory and
-single-row calls, and the Python numbers include interpreter overhead. Every runtime's
-outputs were checked against BoundML's for every test row before timing. Trained from
+single-row calls, and the Python numbers include interpreter overhead. Every reported
+run's outputs matched BoundML's for every test row at batch sizes 1, 7 and 64; a run's
+timings count only after that check passes. Trained from
 identical initial weights and batch order, BoundML and PyTorch reach the same test
 metric to four decimals. The MLP did not beat linear models on either dataset
 ([walkthroughs](docs/walkthroughs.md)). The memory guarantee covers **planned tensor
 storage** for a declared batch size and session count, not whole-process memory.
+These are measurements of two small models on one machine, not a general accuracy
+or speed claim; unfavourable results and limits are kept in the
+[benchmark notes](docs/benchmarks.md) and [release status](docs/release-status.md).
 
 ## Supported in 0.1
 
@@ -221,6 +277,7 @@ storage** for a declared batch size and session count, not whole-process memory.
 | Data | numeric CSV columns mapped by name; standardization; mean imputation or reject |
 | Training | SGD (momentum, L2), AdamW, minibatches, exact checkpoint/resume |
 | Run | Python package (`boundml`, wheels tested on Windows, Linux and macOS), Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
+| Python | 3.9+ (one abi3 wheel per platform); run on 3.11–3.14 (Windows), 3.12 (Linux) and 3.13 (CI, all three platforms). Linux wheels need glibc 2.34+ |
 | Import | dense PyTorch `nn.Sequential` / Keras `Sequential`, checked against the source framework ([migrate/](migrate/README.md)) |
 | Platforms | Windows x86_64, Linux x86_64 and macOS arm64: built, tested and archive smoke-tested in CI. No release published yet |
 | Not supported | GPU, CNN/RNN/transformers, trees, categorical features, arbitrary ONNX, wasm/no_std |
