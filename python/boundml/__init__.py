@@ -87,26 +87,42 @@ class Model:
         """
         if _is_dataframe(data):
             names = [str(c) for c in data.columns]
-            values = data.to_numpy(dtype=np.float64, na_value=np.nan)
-            return self._native.predict_named(names, _matrix(values))
+            return self._predict_columns(names, len(data), lambda j: _column_floats(data.iloc[:, j], names[j]))
         if isinstance(data, Mapping):
             return self._predict_records([data])[0]
         if isinstance(data, Sequence) and data and all(isinstance(r, Mapping) for r in data):
             return self._predict_records(data)
-        x = np.asarray(_none_to_nan(data), dtype=np.float64)
+        try:
+            x = np.asarray(_none_to_nan(data), dtype=np.float64)
+        except (TypeError, ValueError) as e:
+            raise BoundMLError(f"BML-D005 input values must be numbers: {e}", "BML-D005") from None
         if x.ndim == 1:
             return self._native.predict_array(_matrix(x.reshape(1, -1)))[0]
         return self._native.predict_array(_matrix(x))
 
     def _predict_records(self, rows: Sequence[Mapping[str, Any]]) -> np.ndarray:
-        names = list(dict.fromkeys(k for r in rows for k in r))
-        x = np.full((len(rows), len(names)), np.nan)
-        col = {n: j for j, n in enumerate(names)}
-        for i, r in enumerate(rows):
-            for k, v in r.items():
-                if v is not None:
-                    x[i, col[k]] = float(v)
-        return self._native.predict_named([str(n) for n in names], x)
+        names = [str(n) for n in dict.fromkeys(k for r in rows for k in r)]
+
+        def column(j: int) -> np.ndarray:
+            return np.array([_cell(r.get(names[j]), names[j]) for r in rows], dtype=np.float64)
+
+        return self._predict_columns(names, len(rows), column)
+
+    def _predict_columns(self, names: list[str], rows: int, column) -> np.ndarray:
+        """Predict from named columns. Only feature columns are converted to numbers.
+
+        Unknown columns are dropped when the schema ignores extra columns. When it
+        rejects them they are passed on as empty placeholders, so the native layer
+        raises the same error as the CLI and the HTTP server.
+        """
+        features = set(self.features)
+        reject = self._manifest["schema"].get("extra_columns") == "reject"
+        keep = [j for j, n in enumerate(names) if n in features or reject]
+        x = np.full((rows, len(keep)), np.nan)
+        for c, j in enumerate(keep):
+            if names[j] in features:
+                x[:, c] = column(j)
+        return self._native.predict_named([names[j] for j in keep], x)
 
     def __repr__(self) -> str:
         return f"<boundml.Model {self.name!r}: {len(self.features)} features -> {self.outputs}>"
@@ -114,6 +130,30 @@ class Model:
 
 def _is_dataframe(data: Any) -> bool:
     return hasattr(data, "columns") and hasattr(data, "to_numpy") and getattr(data, "ndim", 0) == 2
+
+
+def _cell(v: Any, name: str) -> float:
+    """One raw feature value: None/NaN = missing; numbers (and numeric strings) as float."""
+    if v is None:
+        return np.nan
+    if isinstance(v, bool):
+        raise BoundMLError(f"BML-D005 feature '{name}': boolean value {v!r} is not a number", "BML-D005")
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        raise BoundMLError(f"BML-D005 feature '{name}': value {v!r} is not a number", "BML-D005") from None
+
+
+def _column_floats(col: Any, name: str) -> np.ndarray:
+    """A DataFrame column as float64 (missing = NaN), or BoundMLError BML-D005."""
+    try:
+        return col.to_numpy(dtype=np.float64, na_value=np.nan)
+    except (TypeError, ValueError):
+        return np.array([_cell(None if _is_missing(v) else v, name) for v in col.tolist()], dtype=np.float64)
+
+
+def _is_missing(v: Any) -> bool:
+    return v is None or (isinstance(v, float) and v != v) or str(v) in ("<NA>", "NaT")
 
 
 def _none_to_nan(data: Any) -> Any:

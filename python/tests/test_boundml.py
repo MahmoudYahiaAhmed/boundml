@@ -123,3 +123,56 @@ def test_stopped_training_resumes_to_the_same_result(trained, tmp_path):
     done = boundml.train(CONFIG, tmp_path / "ckpt", resume=True)
     assert done["completed"] and done["global_step"] == full["global_step"]
     assert boundml.evaluate(tmp_path / "ckpt", TEST_CSV) == boundml.evaluate(d / "ckpt", TEST_CSV)
+
+
+def test_dataframe_with_non_numeric_extra_columns(trained):
+    # The real test CSV, as read by pandas: 'id' and the string label 'diagnosis'
+    # ("M"/"B") are not features; the schema ignores extra columns, as the CLI does.
+    pd = pytest.importorskip("pandas")
+    _, _, model = trained
+    df = pd.read_csv(TEST_CSV)
+    assert not pd.api.types.is_numeric_dtype(df["diagnosis"])  # object or StringDtype
+    recs = [{k: float(r[k]) for k in model.features} for r in rows()]
+    expected = model.predict(recs)
+    np.testing.assert_array_equal(model.predict(df), expected)
+    with_labels = [{**r, "diagnosis": "M", "id": "x"} for r in recs]
+    np.testing.assert_array_equal(model.predict(with_labels), expected)
+
+
+def test_non_numeric_feature_values_raise_bml_d005(trained):
+    pd = pytest.importorskip("pandas")
+    _, _, model = trained
+    row = {k: 1.0 for k in model.features}
+    bad = {**row, model.features[0]: "abc"}
+    for data in (bad, [bad], pd.DataFrame([bad]), [[*(["abc"]), *([1.0] * (len(model.features) - 1))]]):
+        with pytest.raises(boundml.BoundMLError) as e:
+            model.predict(data)
+        assert e.value.code == "BML-D005", type(data)
+    # Numeric strings are accepted like CSV cells; missing values follow the policy.
+    assert np.isfinite(model.predict({**row, model.features[0]: "1.5"})).all()
+
+
+def test_unknown_columns_under_a_reject_schema_are_errors(tmp_path):
+    pd = pytest.importorskip("pandas")
+    # Copies of the training data without the 'id' column, which a strict schema refuses.
+    src = (CONFIG.parent / "../../datasets/breast_cancer").resolve()
+    for name in ("train.csv", "valid.csv"):
+        with (src / name).open(newline="") as f:
+            data = [{k: v for k, v in r.items() if k != "id"} for r in csv.DictReader(f)]
+        with (tmp_path / name).open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(data[0]))
+            w.writeheader()
+            w.writerows(data)
+    text = CONFIG.read_text().replace('extra_columns = "ignore"', 'extra_columns = "reject"')
+    text = text.replace('"../../datasets/breast_cancer/', f'"{tmp_path.as_posix()}/')
+    assert 'extra_columns = "reject"' in text
+    cfg = tmp_path / "strict.toml"
+    cfg.write_text(text)
+    boundml.train(cfg, tmp_path / "ckpt")
+    model = boundml.pack(tmp_path / "ckpt", tmp_path / "strict.boundml")
+    row = {k: 1.0 for k in model.features}
+    assert model.predict(row).shape == (len(model.outputs),)
+    for data in ({**row, "diagnosis": "M"}, pd.DataFrame([{**row, "diagnosis": "M"}])):
+        with pytest.raises(boundml.BoundMLError) as e:
+            model.predict(data)
+        assert "diagnosis" in str(e.value) and e.value.code.startswith("BML-")
