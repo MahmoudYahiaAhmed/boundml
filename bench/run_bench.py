@@ -17,8 +17,9 @@ every worker step has a timeout, after which the worker is killed and the run ab
 Every run's record (command, exit status, timings, memory, parity error) is kept.
 
 Each runtime gets one untimed warm-up launch per dataset (file-system cache, first
-DLL load) before the measured runs. Peak memory is the OS high-water mark: the peak
-working set on Windows, `ru_maxrss` from `wait4` on Linux and macOS.
+DLL load) before the measured runs. Peak memory is the OS high-water mark, read after
+the worker exits: the peak working set (through the process handle) on Windows,
+`ru_maxrss` from `wait4` on Linux and macOS.
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ ATOL, RTOL = 1e-5, 1e-4
 STEP_TIMEOUT_S = 300
 TRAIN_TIMEOUT_S = 900
 WINDOWS = os.name == "nt"
-MEMORY_METRIC = ("peak_wset: OS-reported peak working set (high-water mark) of the worker process"
+MEMORY_METRIC = ("peak_wset: OS-reported peak working set (high-water mark) of the worker process, read after exit"
                  if WINDOWS else "ru_maxrss: OS-reported peak resident set size (high-water mark) from wait4")
 INFER_MEMORY = TRAIN_MEMORY = MEMORY_METRIC
 
@@ -76,50 +77,55 @@ def sha256(p: pathlib.Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def peak_memory(p: psutil.Process) -> int:
-    """Windows only: the peak working set is a high-water mark, readable while the process lives."""
-    return int(p.memory_info().peak_wset)
+def windows_peak_after_exit(proc: subprocess.Popen) -> int:
+    """Peak working set of an exited Windows child, read through its process handle.
+
+    The process object stays queryable after exit while `Popen` holds its handle, so
+    this is the OS high-water mark over the whole lifetime, with no polling race.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class Counters(ctypes.Structure):
+        _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                    ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t), ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                    ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+
+    c = Counters()
+    c.cb = ctypes.sizeof(c)
+    get = ctypes.WinDLL("kernel32", use_last_error=True).K32GetProcessMemoryInfo
+    get.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+    get.restype = wintypes.BOOL
+    if not get(wintypes.HANDLE(int(proc._handle)), ctypes.byref(c), c.cb):
+        raise BenchError(f"cannot read the peak memory of pid {proc.pid} (Windows error {ctypes.get_last_error()})")
+    return int(c.PeakWorkingSetSize)
 
 
-def monitor(pid: int) -> psutil.Process | None:
-    """A psutil handle for `pid`, or None when the process is already gone (it may exit
-    before monitoring starts); its exit status is still collected by the caller."""
-    try:
-        return psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return None
-
-
-def wait_with_peak(proc: subprocess.Popen, timeout: float, ps: psutil.Process | None = None) -> tuple[int | None, int]:
+def wait_with_peak(proc: subprocess.Popen, timeout: float) -> tuple[int | None, int]:
     """Wait for exit; return (exit code or None on timeout, peak memory in bytes).
 
-    Windows: poll the peak working set until exit. POSIX: `wait4` returns the child's
-    `ru_maxrss` (KiB on Linux, bytes on macOS), a true high-water mark. A process that
-    exits before it can be sampled reports peak 0 (recorded, never invented).
+    The peak is read once, after the child has exited, from the OS: the peak working
+    set through the process handle on Windows, `ru_maxrss` from `wait4` on POSIX (KiB
+    on Linux, bytes on macOS). Both are lifetime high-water marks, so a child that
+    exits quickly cannot slip between samples.
     """
+    if WINDOWS:
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None, 0
+        return proc.returncode, windows_peak_after_exit(proc)
     deadline = time.perf_counter() + timeout
-    peak = 0
-    if WINDOWS and ps is None:
-        ps = monitor(proc.pid)
     while time.perf_counter() < deadline:
-        if WINDOWS:
-            if ps is not None:
-                try:
-                    peak = max(peak, peak_memory(ps))
-                except (psutil.NoSuchProcess, psutil.ZombieProcess):
-                    ps = None  # exited between polls; the exit code below still counts
-                except psutil.AccessDenied as e:
-                    raise BenchError(f"cannot read memory of pid {proc.pid}: {e}") from e
-            if proc.poll() is not None:
-                return proc.returncode, peak
-        else:
-            pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
-            if pid:
-                proc.returncode = os.waitstatus_to_exitcode(status)
-                scale = 1 if sys.platform == "darwin" else 1024
-                return proc.returncode, int(usage.ru_maxrss) * scale
+        pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
+        if pid:
+            proc.returncode = os.waitstatus_to_exitcode(status)
+            scale = 1 if sys.platform == "darwin" else 1024
+            return proc.returncode, int(usage.ru_maxrss) * scale
         time.sleep(0.005)
-    return None, peak
+    return None, 0
 
 
 def settle(proc: subprocess.Popen, threads: list[threading.Thread]) -> None:
@@ -152,7 +158,6 @@ class Worker:
         self.t0 = time.perf_counter()
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      text=True, cwd=ROOT)
-        self.ps = monitor(self.proc.pid) if WINDOWS else None
         self.peak = 0
         self.lines: queue.Queue = queue.Queue()
         self.stderr: list[str] = []
@@ -204,7 +209,7 @@ class Worker:
             self.proc.stdin.flush()
         except OSError as e:
             raise self.fail(f"could not signal the end of measurements ({e})") from None
-        code, self.peak = wait_with_peak(self.proc, STEP_TIMEOUT_S, self.ps)
+        code, self.peak = wait_with_peak(self.proc, STEP_TIMEOUT_S)
         if code is None:
             raise self.fail("did not exit after the results")
         if code != 0:

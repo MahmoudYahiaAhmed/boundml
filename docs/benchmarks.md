@@ -84,9 +84,15 @@ Every timed Rust result goes through `std::hint::black_box`.
   float32 arrays, so no dtype conversion runs inside the timed call.
 - **Preprocess + infer**: raw values → output.
 - **Peak process memory**: the OS-reported high-water mark of the worker process: the
-  peak working set (`psutil` `peak_wset`) on Windows, `ru_maxrss` from `wait4` on Linux
-  and macOS. It is read when the worker exits, so short peaks are included. It covers
-  the runtime, the loaded CSV and everything else.
+  peak working set on Windows, `ru_maxrss` from `wait4` on Linux and macOS. The driver
+  now reads it once, after the worker exits (on Windows through the process handle),
+  so short peaks are included. It covers the runtime, the loaded CSV and everything
+  else. **The results below were recorded with the earlier driver**, which on Windows
+  sampled the peak working set every 5 ms while the process ran. Inference workers
+  wait for the driver at the end of a run, so their samples include the full peak.
+  Training processes exit on their own, so their recorded peaks can be slightly
+  *under*-reported if memory grew in the last few milliseconds before exit. CI found
+  this race on 2026-10-25 in a 50 MB allocation test.
 - **Planned tensor bytes** (BoundML only): the planner's total for one session at the
   package's `max_batch` (weights + arena). This is the quantity the budget bounds. It
   is a small part of the whole process.

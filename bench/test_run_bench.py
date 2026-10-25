@@ -1,7 +1,8 @@
 """Checks that the benchmark driver fails closed: `python -m unittest bench/test_run_bench.py`.
 
-Deterministic: misbehaving workers are scripted (bench/fake_worker.py) or psutil is
-replaced by a stub; no test depends on sleeps or retries to win a race.
+Deterministic: misbehaving workers are scripted (bench/fake_worker.py), peak memory is
+read from the OS after the child exits, and no test depends on sleeps or retries to
+win a race.
 """
 
 import gc
@@ -184,35 +185,35 @@ class Workers(unittest.TestCase):
 
 
 class Monitoring(unittest.TestCase):
-    def test_worker_that_exits_before_monitoring_starts(self):
-        gone = mock.Mock(side_effect=psutil.NoSuchProcess(pid=1))
-        with mock.patch.object(rb.psutil, "Process", gone), mock.patch.object(rb, "WINDOWS", True):
-            w = rb.Worker([sys.executable, "-c", "print('FIRST', flush=True)"])
-            self.assertIsNone(w.ps)
-            self.assertEqual(w.expect("FIRST"), "FIRST")
-            code, peak = rb.wait_with_peak(w.proc, 30, w.ps)
-            w.close()
-        self.assertEqual((code, peak), (0, 0))
-
-    def test_process_vanishing_between_polls_is_not_an_error(self):
-        ps = mock.Mock()
-        ps.memory_info.side_effect = psutil.NoSuchProcess(pid=1)
-        with mock.patch.object(rb, "WINDOWS", True):
-            proc = rb.subprocess.Popen([sys.executable, "-c", "pass"])
-            code, _ = rb.wait_with_peak(proc, 30, ps)
+    def test_a_worker_that_exits_immediately_still_reports_its_peak(self):
+        # The peak is read after exit, so there is no window to miss.
+        proc = rb.subprocess.Popen([sys.executable, "-c", "pass"])
+        code, peak = rb.wait_with_peak(proc, 30)
         self.assertEqual(code, 0)
+        self.assertGreater(peak, 1_000_000)
 
-    def test_access_denied_is_reported_not_swallowed(self):
-        ps = mock.Mock()
-        ps.memory_info.side_effect = psutil.AccessDenied(pid=1)
-        with mock.patch.object(rb, "WINDOWS", True):
-            proc = rb.subprocess.Popen([sys.executable, "-c", "import sys; sys.stdin.readline()"],
-                                       stdin=rb.subprocess.PIPE)
-            try:
-                with self.assertRaises(rb.BenchError):
-                    rb.wait_with_peak(proc, 30, ps)
-            finally:
-                rb.settle(proc, [])
+    def test_peak_covers_a_short_lived_allocation(self):
+        # Allocate ~50 MB and exit at once: a polling sampler could miss this.
+        for _ in range(5):
+            proc = rb.subprocess.Popen([sys.executable, "-c", "b = bytearray(50_000_000); b[::4096] = b'x' * len(b[::4096])"])
+            code, peak = rb.wait_with_peak(proc, 60)
+            self.assertEqual(code, 0)
+            self.assertGreater(peak, 50_000_000)
+
+    @unittest.skipUnless(rb.WINDOWS, "Windows memory API")
+    def test_unreadable_peak_is_an_error_not_zero(self):
+        proc = rb.subprocess.Popen([sys.executable, "-c", "pass"])
+        proc.wait()
+        with mock.patch.object(proc, "_handle", 0):
+            with self.assertRaises(rb.BenchError):
+                rb.windows_peak_after_exit(proc)
+
+    def test_timeout_returns_none(self):
+        proc = rb.subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        try:
+            self.assertEqual(rb.wait_with_peak(proc, 1), (None, 0))
+        finally:
+            rb.settle(proc, [])
 
 
 class MeasuredRuns(unittest.TestCase):
