@@ -66,7 +66,8 @@ boundml --version
 boundml 0.1.0 (revision 4cb8b6c7fe, x86_64-pc-windows-msvc)
 ```
 The revision (source commit) and target identify your build and will differ. A build
-from a source archive without `.git` prints `revision unknown`.
+without `.git` (for example `cargo install boundml-cli` from crates.io) prints
+`revision unknown`.
 
 ## Quickstart: CSV → model → prediction
 

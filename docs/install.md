@@ -85,7 +85,9 @@ unrelated). Use a virtual environment (`python -m venv .venv`). Usage:
 boundml --version
 ```
 
-prints `boundml 0.1.0 (revision <git revision>, <target triple>)`. `boundml version`
+prints `boundml 0.1.0 (revision <git revision>, <target triple>)`. A build without
+`.git`, such as `cargo install boundml-cli` from crates.io, prints `revision unknown`;
+release archives print the tagged commit (`3c79dd9570` for 0.1.0). `boundml version`
 adds the supported package and checkpoint format versions, and `boundml --json version`
 prints the same as JSON.
 
