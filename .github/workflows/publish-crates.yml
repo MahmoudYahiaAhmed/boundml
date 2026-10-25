@@ -32,14 +32,13 @@ jobs:
           crates = {"boundml-core", "boundml-data", "boundml-artifact", "boundml-train", "boundml-cli"}
           missing = [p["name"] for p in json.load(sys.stdin)["packages"] if p["name"] in crates and not p.get("repository")]
           sys.exit(f"set `repository` in Cargo.toml first (README links depend on it): {missing}" if missing else 0)'
-      - name: Publish in dependency order
+      - name: Publish in dependency order (cargo orders the workspace crates itself)
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          for c in boundml-core boundml-data boundml-artifact boundml-train boundml-cli; do
-            if [ "${{ inputs.dry_run }}" = "true" ]; then
-              cargo publish --locked --dry-run -p "$c"
-            else
-              cargo publish --locked -p "$c"
-            fi
-          done
+          args="--workspace --locked --exclude boundml-bench --exclude boundml-embed-example --exclude power-app"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            cargo publish $args --dry-run
+          else
+            cargo publish $args
+          fi

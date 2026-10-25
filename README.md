@@ -20,7 +20,7 @@ travel with the model instead of being re-implemented next to it.
 **What it is not:** a general deep-learning framework or a faster ONNX runtime.
 Large or GPU models, images, text, trees and categorical features are out of scope.
 On large batches ONNX Runtime is faster (see [Evidence](#evidence)). **Status:
-private beta (0.1.0)**, CPU only, no published release yet:
+early public beta (0.1.0)**, CPU only:
 [what is verified](docs/release-status.md).
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3DD9B3)](#license)
@@ -36,28 +36,25 @@ private beta (0.1.0)**, CPU only, no published release yet:
 |---|---|---|
 | Train from a CSV and predict, from a terminal | `boundml` CLI (one executable) | [Quickstart](#quickstart-csv--model--prediction) |
 | Predict inside a Rust program | the `boundml-artifact` crate | [Embed it in Rust](#embed-it-in-a-rust-application) |
-| Train or predict from Python (pandas, NumPy) | the `boundml` Python package | [Use it from Python](#use-it-from-python) |
+| Train or predict from Python (pandas, NumPy) | the `boundml-rs` Python package | [Use it from Python](#use-it-from-python) |
 
 All three run the same Rust code and give bitwise-identical predictions for the same
 package (checked in CI). A package trained with any of them works with the others.
 
 ## Install
 
-Nothing is on crates.io or PyPI yet, and no GitHub release has been published.
-(**`pip install boundml` installs an unrelated PyPI project** with the same name; use
-one of the paths below.) Today
-there are three ways in, all from this repository:
+BoundML 0.1.0 is an **early public beta**. Pick the path that matches how you work:
 
-| What | How | Needs |
+| What | Install | Platforms |
 |---|---|---|
-| CLI from a release archive | build it with `python scripts/release.py --out dist` (or take the `package-smoke` artifact of a CI run), check its `.sha256`, extract it, run `boundml` from the folder | nothing at run time; one executable |
-| CLI from source | `cargo install --path crates/boundml-cli --locked` | Rust 1.94+ |
-| Python package | `pip install ./python` (builds a wheel), or `pip install` a wheel built by CI or `maturin build` | Rust 1.94+ to build; Python ≥ 3.9 |
+| CLI, prebuilt | download the archive for your platform from the [v0.1.0 release](https://github.com/MahmoudYahiaAhmed/boundml/releases/tag/v0.1.0), check it against `SHA256SUMS`, extract it, run `boundml` | Windows x86_64, Linux x86_64 (glibc 2.34+), macOS arm64 |
+| CLI, from crates.io | `cargo install boundml-cli --locked` | anything Rust 1.94+ builds for; tested on the three platforms above |
+| Rust library | `cargo add boundml-artifact@0.1` | same |
+| Python package | `pip install boundml-rs`, then `import boundml_rs` | Windows x86_64, Linux x86_64 (glibc 2.34+), macOS arm64; Python 3.11–3.14 |
 
-Archives and wheels for Windows x86_64, Linux x86_64 and macOS arm64 are built and
-tested in CI. Commands for PowerShell and bash, updating and removal:
-[docs/install.md](docs/install.md). Once a release exists, the archive becomes the
-recommended path.
+The Python distribution is **`boundml-rs`** and its import name is **`boundml_rs`**. The
+project named `boundml` on PyPI is unrelated to this one. PowerShell and bash steps,
+checksums, updating and removal: [docs/install.md](docs/install.md).
 
 The commands below are written as `boundml …`. In **PowerShell**, from an extracted
 archive folder, type `.\boundml …` instead, or add the folder to `PATH`.
@@ -130,21 +127,14 @@ in [docs/errors.md](docs/errors.md). Full walkthrough with real datasets:
 
 ## Use it from Python
 
-The `boundml` Python package runs the same native code as the CLI. Install it from a
-checkout (this builds a wheel; Rust 1.94+ required) or from a built wheel file:
-
-```bash
-pip install ./python                                  # from the repository root
-pip install boundml-0.1.0-cp39-abi3-win_amd64.whl     # or a wheel built by CI / maturin
-```
-
-Predict with the package from the quickstart above. This works from any directory;
-only the package path matters:
+`pip install boundml-rs` gives you the same native code as the CLI (import name
+`boundml_rs`). Predict with the package from the quickstart above; this works from any
+directory, only the package path matters:
 
 ```python
-import boundml
+import boundml_rs
 
-model = boundml.load("demo/model.boundml")
+model = boundml_rs.load("demo/model.boundml")
 print(model.features)   # ['temperature', 'humidity', 'load']
 print(model.predict({"temperature": 20, "humidity": None, "load": 0.5}))   # [4.821724]
 ```
@@ -152,17 +142,17 @@ print(model.predict({"temperature": 20, "humidity": None, "load": 0.5}))   # [4.
 `predict` also takes a list of dicts, a pandas DataFrame (columns matched by name) or
 a NumPy array in `model.features` order, and returns a float32 array of shape
 `(rows, outputs)`. Values are raw; `None`/NaN means missing and follows the schema's
-missing-value policy. Errors raise `boundml.BoundMLError` with a stable `code`.
+missing-value policy. Errors raise `boundml_rs.BoundMLError` with a stable `code`.
 
-Training works the same way. This example uses a config from the repository, so run
-it from the repository root (the config's data paths are relative to the config):
+Training takes a TOML config and CSV files. The release archives include a real
+example (UCI breast-cancer data); from an extracted archive folder:
 
 ```python
-import boundml
+import boundml_rs
 
-boundml.train("examples/breast_cancer/linear.toml", "out/bc/ckpt")
-print(boundml.evaluate("out/bc/ckpt", "datasets/breast_cancer/test.csv")["model"]["accuracy"])   # 0.959677...
-model = boundml.pack("out/bc/ckpt", "out/bc/model.boundml")
+boundml_rs.train("examples/breast_cancer/linear.toml", "bc/ckpt")
+print(boundml_rs.evaluate("bc/ckpt", "datasets/breast_cancer/test.csv")["model"]["accuracy"])   # 0.9596...
+model = boundml_rs.pack("bc/ckpt", "bc/model.boundml")
 ```
 
 Details and the full API: [python/README.md](python/README.md).
@@ -170,15 +160,11 @@ Details and the full API: [python/README.md](python/README.md).
 ## Embed it in a Rust application
 
 The `boundml-artifact` crate loads packages and predicts; it has no training, HTTP or
-async dependencies. It is not on crates.io yet, so depend on it from a checkout:
+async dependencies.
 
 ```toml
 [dependencies]
-# a local checkout of this repository:
-boundml-artifact = { path = "/path/to/boundml/crates/boundml-artifact" }
-# or, with read access to this private repository (Cargo uses your git credentials
-# when CARGO_NET_GIT_FETCH_WITH_CLI=true):
-# boundml-artifact = { git = "https://github.com/MahmoudYahiaAhmed/boundml" }
+boundml-artifact = "0.1"
 ```
 
 ```rust
@@ -279,9 +265,9 @@ or speed claim; unfavourable results and limits are kept in the
 | Data | numeric CSV columns mapped by name; standardization; mean imputation or reject |
 | Training | SGD (momentum, L2), AdamW, minibatches, exact checkpoint/resume |
 | Run | Python package (`boundml`, wheels tested on Windows, Linux and macOS), Rust `Predictor` API, `boundml predict`, local HTTP (`boundml serve`, no auth/TLS) |
-| Python | 3.9+ (one abi3 wheel per platform); run on 3.11–3.14 (Windows), 3.12 (Linux) and 3.13 (CI, all three platforms). Linux wheels need glibc 2.34+ |
+| Python | `pip install boundml-rs` (import `boundml_rs`); Python 3.11–3.14, each tested in CI on all three platforms; NumPy 2.x |
 | Import | dense PyTorch `nn.Sequential` / Keras `Sequential`, checked against the source framework ([migrate/](migrate/README.md)) |
-| Platforms | Windows x86_64, Linux x86_64 and macOS arm64: built, tested and archive smoke-tested in CI. No release published yet |
+| Platforms | Windows x86_64, Linux x86_64 with glibc 2.34+ (for example Ubuntu 22.04+, Debian 12+), macOS on Apple silicon (arm64). Intel macOS, 32-bit, ARM Linux and musl are not built or tested |
 | Not supported | GPU, CNN/RNN/transformers, trees, categorical features, arbitrary ONNX, wasm/no_std |
 
 ## Documentation

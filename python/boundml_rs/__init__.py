@@ -1,9 +1,9 @@
 """BoundML for Python: train and run small numeric models whose schema, fitted
 preprocessing, self-tests and memory plan travel inside one package.
 
-    import boundml
-    boundml.train("model.toml", "ckpt")
-    model = boundml.pack("ckpt", "model.boundml")
+    import boundml_rs
+    boundml_rs.train("model.toml", "ckpt")
+    model = boundml_rs.pack("ckpt", "model.boundml")
     model.predict({"temperature": 20, "humidity": None, "load": 0.5})
 
 The computation is the same native Rust code as the ``boundml`` CLI, so a package
@@ -125,7 +125,7 @@ class Model:
         return self._native.predict_named([names[j] for j in keep], x)
 
     def __repr__(self) -> str:
-        return f"<boundml.Model {self.name!r}: {len(self.features)} features -> {self.outputs}>"
+        return f"<boundml_rs.Model {self.name!r}: {len(self.features)} features -> {self.outputs}>"
 
 
 def _is_dataframe(data: Any) -> bool:

@@ -7,36 +7,12 @@ breaking changes; they are called out under **Breaking**.
 
 ## [Unreleased]
 
-### Added
-- `boundml` Python package (`python/`, PyO3 + maturin, one abi3 wheel for Python ≥
-  3.9): `train`, `evaluate`, `pack`, `load`, and `Model.predict` from pandas
-  DataFrames, dict rows or NumPy arrays, with predictions bitwise identical to the
-  CLI. Errors raise `boundml.BoundMLError` with the stable `BML-xxxx` code.
+## [0.1.0] — 2026-10-25 — early public beta
 
-### Fixed
-- Python `Model.predict` on a pandas DataFrame or dict rows no longer fails when
-  the input has non-numeric columns that are not features (such as a string label
-  column); only feature columns are converted, unknown columns follow the schema's
-  `extra_columns` policy, and a non-numeric feature value raises `BoundMLError`
-  `BML-D005`.
-- Benchmark harness: parity files must contain exactly batch sizes 1, 7 and 64 with
-  the expected number of finite values; workers are settled on every failure path;
-  PyTorch builds its controlled batch order before its training timer.
-- Server: a rejected request's body is drained for at most 250 ms and 64 KiB, so an
-  overload 503 can reach the client (reproduced Windows reset, error 10053).
-
-### Removed
-- Launch drafts (`launch/`), internal planning notes (`docs/decision.md`,
-  `docs/research.md`, `docs/design-partner-plan.md`, `docs/benchmark-targets.md`),
-  asset-rendering and demo-recording scripts, and the tract/Burn benchmark workspace
-  (`bench/baselines`). Benchmarks now compare BoundML with PyTorch and ONNX Runtime.
-
-### Changed
-- Benchmarks: one untimed warm-up launch per runtime; peak memory is the OS
-  high-water mark on every platform (`ru_maxrss` via `wait4` on Linux and macOS);
-  the uncommitted files at measurement time are recorded by name.
-
-## [0.1.0] — first public release (early release)
+First public release: CLI archives for Windows x86_64, Linux x86_64 (glibc 2.34+) and
+macOS arm64; crates `boundml-core`, `boundml-data`, `boundml-artifact`,
+`boundml-train`, `boundml-cli`; Python package `boundml-rs` (import `boundml_rs`) for
+Python 3.11–3.14 on the same platforms.
 
 ### Added
 - `boundml` CLI with `init`, `split`, `validate`, `plan`, `train` (with `--resume`
@@ -65,6 +41,34 @@ breaking changes; they are called out under **Breaking**.
   CI-friendly via exit code 6.
 - PyTorch `nn.Sequential` and Keras `Sequential` dense-model import, verified against
   the source framework's outputs.
+- Python package **`boundml-rs`** (import name `boundml_rs`; the PyPI project named
+  `boundml` is unrelated): `train`, `evaluate`, `pack`, `load`, and `Model.predict`
+  from pandas DataFrames, dict rows or NumPy arrays, with predictions bitwise
+  identical to the CLI. Errors raise `boundml_rs.BoundMLError` with the stable
+  `BML-xxxx` code. One abi3 wheel per platform, Python 3.11–3.14.
+
+### Fixed before release (readiness review)
+- Python `Model.predict` on a pandas DataFrame or dict rows no longer fails when
+  the input has non-numeric columns that are not features (such as a string label
+  column); only feature columns are converted, unknown columns follow the schema's
+  `extra_columns` policy, and a non-numeric feature value raises `BoundMLError`
+  `BML-D005`.
+- Benchmark harness: parity files must contain exactly batch sizes 1, 7 and 64 with
+  the expected number of finite values; workers are settled on every failure path;
+  PyTorch builds its controlled batch order before its training timer.
+- Server: a rejected request's body is drained for at most 250 ms and 64 KiB, so an
+  overload 503 can reach the client (reproduced Windows reset, error 10053).
+
+### Changed before release
+- Benchmarks: one untimed warm-up launch per runtime; peak memory is the OS
+  high-water mark on every platform (`ru_maxrss` via `wait4` on Linux and macOS);
+  the uncommitted files at measurement time are recorded by name.
+
+### Removed before release
+- Launch drafts (`launch/`), internal planning notes (`docs/decision.md`,
+  `docs/research.md`, `docs/design-partner-plan.md`, `docs/benchmark-targets.md`),
+  asset-rendering and demo-recording scripts, and the tract/Burn benchmark workspace
+  (`bench/baselines`). Benchmarks now compare BoundML with PyTorch and ONNX Runtime.
 
 ### Fixed before release (pre-launch audit)
 - `compare` now reports a removed feature as breaking when the candidate rejects
@@ -111,7 +115,8 @@ breaking changes; they are called out under **Breaking**.
 
 ### Known limitations
 See [docs/release-status.md](docs/release-status.md): CPU only, single-threaded
-kernels, only Windows x86_64 built and tested, and no external user evaluations yet.
+kernels, dense models on numeric features only, and no external user evaluations
+yet.
 
 [Unreleased]: ../../compare/v0.1.0...HEAD
 [0.1.0]: ../../releases/tag/v0.1.0

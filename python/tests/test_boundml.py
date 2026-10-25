@@ -10,7 +10,7 @@ import threading
 import numpy as np
 import pytest
 
-import boundml
+import boundml_rs
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 CONFIG = REPO / "examples" / "breast_cancer" / "linear.toml"
@@ -21,8 +21,8 @@ CLI = REPO / "target" / "release" / ("boundml.exe" if os.name == "nt" else "boun
 @pytest.fixture(scope="module")
 def trained(tmp_path_factory):
     d = tmp_path_factory.mktemp("bc with spaces")
-    result = boundml.train(CONFIG, d / "ckpt")
-    model = boundml.pack(d / "ckpt", d / "model.boundml")
+    result = boundml_rs.train(CONFIG, d / "ckpt")
+    model = boundml_rs.pack(d / "ckpt", d / "model.boundml")
     return d, result, model
 
 
@@ -34,10 +34,10 @@ def rows():
 def test_train_evaluate_pack(trained):
     d, result, model = trained
     assert result["completed"] and result["global_step"] > 0 and result["history"]
-    metrics = boundml.evaluate(d / "ckpt", TEST_CSV)
+    metrics = boundml_rs.evaluate(d / "ckpt", TEST_CSV)
     assert metrics["model"]["accuracy"] == pytest.approx(0.9597, abs=1e-4)
     assert metrics["baseline"]["accuracy"] < metrics["model"]["accuracy"]
-    assert boundml.evaluate(d / "model.boundml", TEST_CSV)["model"] == metrics["model"]
+    assert boundml_rs.evaluate(d / "model.boundml", TEST_CSV)["model"] == metrics["model"]
     assert model.verify()["passed"] is True
     assert model.outputs and len(model.features) == 30
 
@@ -72,21 +72,21 @@ def test_predictions_match_the_cli_bitwise(trained, tmp_path):
 
 def test_errors_carry_stable_codes(trained, tmp_path):
     d, _, model = trained
-    with pytest.raises(boundml.BoundMLError) as e:
+    with pytest.raises(boundml_rs.BoundMLError) as e:
         model.predict(np.zeros((2, 3)))
     assert e.value.code == "BML-D002"
-    with pytest.raises(boundml.BoundMLError) as e:
+    with pytest.raises(boundml_rs.BoundMLError) as e:
         model.predict({k: float("inf") for k in model.features})
     assert e.value.code.startswith("BML-")
-    with pytest.raises(boundml.BoundMLError) as e:
-        boundml.load(tmp_path / "missing")
+    with pytest.raises(boundml_rs.BoundMLError) as e:
+        boundml_rs.load(tmp_path / "missing")
     assert e.value.code == "BML-A001"
     broken = tmp_path / "broken.boundml"
     shutil.copytree(d / "model.boundml", broken)
     w = broken / "weights.safetensors"
     w.write_bytes(w.read_bytes()[:-4] + b"\0\0\0\0")
-    with pytest.raises(boundml.BoundMLError) as e:
-        boundml.load(broken)
+    with pytest.raises(boundml_rs.BoundMLError) as e:
+        boundml_rs.load(broken)
     assert e.value.code == "BML-A004"  # integrity (hash) mismatch
 
 
@@ -96,7 +96,7 @@ def test_missing_values_follow_the_schema_policy(trained):
     one[model.features[0]] = None
     policy = model.manifest["schema"]["missing"]
     if policy == "reject":
-        with pytest.raises(boundml.BoundMLError):
+        with pytest.raises(boundml_rs.BoundMLError):
             model.predict(one)
     else:
         assert np.isfinite(model.predict(one)).all()
@@ -118,11 +118,11 @@ def test_memory_report_and_threads(trained):
 
 def test_stopped_training_resumes_to_the_same_result(trained, tmp_path):
     d, full, _ = trained
-    part = boundml.train(CONFIG, tmp_path / "ckpt", max_steps=5)
+    part = boundml_rs.train(CONFIG, tmp_path / "ckpt", max_steps=5)
     assert not part["completed"] and part["global_step"] == 5
-    done = boundml.train(CONFIG, tmp_path / "ckpt", resume=True)
+    done = boundml_rs.train(CONFIG, tmp_path / "ckpt", resume=True)
     assert done["completed"] and done["global_step"] == full["global_step"]
-    assert boundml.evaluate(tmp_path / "ckpt", TEST_CSV) == boundml.evaluate(d / "ckpt", TEST_CSV)
+    assert boundml_rs.evaluate(tmp_path / "ckpt", TEST_CSV) == boundml_rs.evaluate(d / "ckpt", TEST_CSV)
 
 
 def test_dataframe_with_non_numeric_extra_columns(trained):
@@ -145,7 +145,7 @@ def test_non_numeric_feature_values_raise_bml_d005(trained):
     row = {k: 1.0 for k in model.features}
     bad = {**row, model.features[0]: "abc"}
     for data in (bad, [bad], pd.DataFrame([bad]), [[*(["abc"]), *([1.0] * (len(model.features) - 1))]]):
-        with pytest.raises(boundml.BoundMLError) as e:
+        with pytest.raises(boundml_rs.BoundMLError) as e:
             model.predict(data)
         assert e.value.code == "BML-D005", type(data)
     # Numeric strings are accepted like CSV cells; missing values follow the policy.
@@ -168,11 +168,11 @@ def test_unknown_columns_under_a_reject_schema_are_errors(tmp_path):
     assert 'extra_columns = "reject"' in text
     cfg = tmp_path / "strict.toml"
     cfg.write_text(text)
-    boundml.train(cfg, tmp_path / "ckpt")
-    model = boundml.pack(tmp_path / "ckpt", tmp_path / "strict.boundml")
+    boundml_rs.train(cfg, tmp_path / "ckpt")
+    model = boundml_rs.pack(tmp_path / "ckpt", tmp_path / "strict.boundml")
     row = {k: 1.0 for k in model.features}
     assert model.predict(row).shape == (len(model.outputs),)
     for data in ({**row, "diagnosis": "M"}, pd.DataFrame([{**row, "diagnosis": "M"}])):
-        with pytest.raises(boundml.BoundMLError) as e:
+        with pytest.raises(boundml_rs.BoundMLError) as e:
             model.predict(data)
         assert "diagnosis" in str(e.value) and e.value.code.startswith("BML-")

@@ -1,14 +1,11 @@
-# Release status — 0.1.0 (private beta)
+# Release status — 0.1.0 (early public beta)
 
-**Label: private beta.** Complete for its scoped features; nothing published. Built,
-tested and archive smoke-tested on Windows x86_64, Linux x86_64 and macOS arm64 in
-GitHub Actions (latest: [run 40139782934](https://github.com/MahmoudYahiaAhmed/boundml/actions/runs/40139782934) on branch
-`readiness/private-beta`, commit `4cb8b6c`, all 10 jobs passed; first green run:
-[40032964857](https://github.com/MahmoudYahiaAhmed/boundml/actions/runs/40032964857)
-on `main`, `fbad6db`), and locally on Windows 11 and WSL2 Ubuntu 24.04. Not
-production-validated, and no outside users yet. Publication steps and owner
-decisions: `docs/publication-plan.md` in the repository (not shipped in release
-archives).
+**Label: early public beta.** Complete for its scoped features, not
+production-validated, and not yet evaluated by outside users. Where to get it:
+[install.md](install.md). Built, tested and archive smoke-tested on Windows x86_64,
+Linux x86_64 and macOS arm64 in GitHub Actions on every change to `main`, with the
+Python package tested on Python 3.11–3.14 on each of those platforms; also checked
+locally on Windows 11 and WSL2 Ubuntu 24.04.
 
 ## Verified locally (Windows 11 x64, Ryzen 7 8700F, Rust 1.94.0)
 
@@ -83,21 +80,15 @@ virtual environments. Scripts and logs: `out/verify/` (local, not committed).
 | Path | Platform | Result |
 |---|---|---|
 | CLI from the extracted archive: version, init, validate, train, evaluate, pack, verify, predict, budget failure (exit 4), schema error (exit 3, no output file), `--out` = `--data` refused, real-data training | Windows 11 (archive built from `4cb8b6c`); WSL2 Ubuntu 24.04 (archive built from `b35e9ff`) | all 24 checks pass; documented numbers reproduced (RMSE 0.1877, first prediction 4.5001, accuracy 0.9597) |
-| Rust: README snippet in a new Cargo project (path dependency and private git dependency); a third predictor with `deploy.sessions = 2` refused (BML-A010); `examples/embed` | Windows 11 | pass; `power = 4.821724` |
+| Rust: README snippet in a new Cargo project (path dependency and git dependency); a third predictor with `deploy.sessions = 2` refused (BML-A010); `examples/embed` | Windows 11 | pass; `power = 4.821724` |
 | Python wheel in a clean venv: metadata and tags, README examples, predictions bitwise equal to the CLI's for dict rows and DataFrames, Python-trained package equal through the CLI | Windows 11, Python 3.11, 3.12, 3.13, 3.14; WSL2 Ubuntu, Python 3.12 | pass |
 
-## Not verified — depends on things outside this machine
+## Not verified
 
 | Item | Depends on |
 |---|---|
 | The reviewer's Linux object-file error | a reproduction in the reviewer's environment (filesystem type, container runtime, limits); not reproduced locally under disk or memory exhaustion |
-| Tagged release workflow (`release.yml`) and published archives | pushing a `v*` tag; the same build and smoke test already pass in `ci.yml` |
-| PyPI wheels | a distribution name: **`boundml` on PyPI belongs to an unrelated project**, so `pip install boundml` installs something else; then publishing. Wheels are built and tested in CI but not uploaded |
 | Linux wheels for glibc < 2.34 (older than Ubuntu 22.04) | a manylinux2014 container build; current wheels are `manylinux_2_34` |
-| Python 3.9 and 3.10 | running the tests on them; the abi3 wheel claims 3.9+ but only 3.11–3.14 were run |
-| Conduct and security contacts | the owner supplying a private conduct contact; vulnerability reporting needs a public repository |
-| crates.io packages (`cargo install boundml-cli`) | publishing in order core → data → artifact → train → cli; dependent dry-runs fail until their dependencies are on crates.io |
-| Private vulnerability reporting route | making the repository public, then enabling it in repository settings |
 | Demand / fit for real workloads | 3–5 outside developers deploying their own models |
 | Fuzzing, `cargo audit`/`cargo deny` | not run |
 

@@ -3,7 +3,7 @@
 //! here; everything else (validation, preprocessing, planned execution, training)
 //! is the same Rust code the CLI uses.
 //!
-//! Errors are raised as `boundml.BoundMLError(message, code)`. Computation runs with
+//! Errors are raised as `boundml_rs.BoundMLError(message, code)`. Computation runs with
 //! the GIL released, so other Python threads keep running.
 
 use boundml_artifact::{Package, Predictor};
@@ -22,12 +22,12 @@ fn code_of(message: &str) -> &str {
         .unwrap_or("BML-E000")
 }
 
-/// Build a `boundml.BoundMLError(message, code)`.
+/// Build a `boundml_rs.BoundMLError(message, code)`.
 fn error(py: Python<'_>, message: impl Into<String>) -> PyErr {
     let message = message.into();
     let code = code_of(&message).to_string();
     match py
-        .import("boundml._errors")
+        .import("boundml_rs._errors")
         .and_then(|m| m.getattr("BoundMLError"))
         .and_then(|cls| cls.call1((message.clone(), code)))
     {
@@ -41,7 +41,7 @@ fn json<T: serde::Serialize>(py: Python<'_>, value: &T) -> PyResult<String> {
 }
 
 /// A loaded, validated package plus one lazily created predictor (one session).
-#[pyclass(module = "boundml._native", frozen)]
+#[pyclass(module = "boundml_rs._native", frozen)]
 struct NativeModel {
     pkg: Arc<Package>,
     predictor: Mutex<Option<Predictor>>,

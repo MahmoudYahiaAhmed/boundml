@@ -94,6 +94,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +103,7 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
       - run: cargo fmt --manifest-path python/Cargo.toml --check
       - run: cargo clippy --manifest-path python/Cargo.toml --locked -- -D warnings
       - run: cargo build --release --locked -p boundml-cli
@@ -111,11 +112,11 @@ jobs:
         shell: bash
         run: |
           maturin build --release --locked --manifest-path python/Cargo.toml --out wheels
-          pip install --no-index --find-links wheels boundml
+          pip install --no-index --find-links wheels boundml-rs
       - run: python -m pytest python/tests -q
       - name: Benchmark-harness checks (parity gate, worker lifecycle)
         run: python -W error::ResourceWarning -m unittest bench/test_run_bench.py
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-${{ matrix.os }}
+          name: wheel-${{ matrix.os }}-py${{ matrix.python }}
           path: wheels/*.whl

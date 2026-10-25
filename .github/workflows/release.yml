@@ -1,7 +1,7 @@
-# Builds release archives on a version tag and creates a DRAFT GitHub release.
-# Nothing is published automatically: a maintainer reviews and publishes the draft.
-# Not yet run (it runs on a pushed `v*` tag); the same archive build and smoke test
-# pass in ci.yml's package-smoke job on all three platforms.
+# On a version tag: builds the CLI archives and Python wheels for each platform,
+# smoke-tests the extracted archive and the installed wheel, and creates a DRAFT
+# GitHub pre-release with every file and SHA256SUMS. A maintainer reviews and
+# publishes the draft; the PyPI upload is a separate workflow (publish-pypi.yml).
 name: release
 
 on:
@@ -35,12 +35,32 @@ jobs:
           python-version: "3.13"
       - name: Build, package, checksum and smoke-test the archive
         run: python scripts/release.py --target ${{ matrix.target }} --out dist
+      - name: Build the Python wheel (boundml-rs)
+        shell: bash
+        run: |
+          pip install maturin pytest pandas numpy
+          maturin build --release --locked --manifest-path python/Cargo.toml --out dist
+      - name: Install the wheel and run its tests (CLI parity against the release binary)
+        shell: bash
+        run: |
+          cargo build --release --locked -p boundml-cli
+          pip install --no-index --find-links dist boundml-rs
+          python -m pytest python/tests -q
+      - name: Wheel checksums (LF line endings on every platform)
+        shell: bash
+        run: |
+          cd dist
+          for w in *.whl; do
+            python -c 'import hashlib, sys; p = sys.argv[1]; d = hashlib.sha256(open(p, "rb").read()).hexdigest(); open(p + ".sha256", "w", newline="\n").write(f"{d}  {p}\n")' "$w"
+            cat "$w.sha256"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.target }}
           path: |
             dist/*.zip
             dist/*.tar.gz
+            dist/*.whl
             dist/*.sha256
             dist/smoke-*.json
 
@@ -56,12 +76,12 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Combined checksums
-        run: cd dist && cat *.sha256 | sort > SHA256SUMS && cat SHA256SUMS
+        run: cd dist && cat *.sha256 | sort > SHA256SUMS && cat SHA256SUMS && sha256sum -c SHA256SUMS
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --draft --prerelease \
-            --title "BoundML $GITHUB_REF_NAME (early release)" \
+            --title "BoundML $GITHUB_REF_NAME (early beta)" \
             --notes-file ".github/release-notes/$GITHUB_REF_NAME.md" \
-            dist/*.zip dist/*.tar.gz dist/*.sha256 dist/SHA256SUMS
+            dist/*.zip dist/*.tar.gz dist/*.whl dist/*.sha256 dist/SHA256SUMS

@@ -1,12 +1,12 @@
 # Quickstart
 
-Two paths, both from an archive or a source install (see [install.md](install.md);
-no release has been published yet, so archives are built locally or taken from CI):
+Two paths, from a release archive or `cargo install boundml-cli` (see
+[install.md](install.md)):
 
 1. **CLI**: train from CSV, evaluate, package and predict.
 2. **Rust**: load the resulting package inside your own program.
 
-From Python, the same steps are `boundml.train`, `boundml.evaluate`, `boundml.pack` and
+From Python (`pip install boundml-rs`), the same steps are `boundml_rs.train`, `boundml_rs.evaluate`, `boundml_rs.pack` and
 `Model.predict`: see [python/README.md](../python/README.md).
 
 Outputs below are copied from real runs (the core steps are recorded in `assets/demo-transcript.txt`). Timings
@@ -188,8 +188,7 @@ is to restore the header name `humidity` (or retrain with the new name). Column
 
 ## Path 2 — Rust
 
-Create a program next to your package (from a checkout of this repository, until the
-crates are published):
+Create a program next to your package:
 
 ```bash
 cargo new power-app
@@ -199,7 +198,7 @@ cargo new power-app
 
 ```toml
 [dependencies]
-boundml-artifact = { path = "<path to this repository>/crates/boundml-artifact" }
+boundml-artifact = "0.1"
 ```
 
 `power-app/src/main.rs`:

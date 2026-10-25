@@ -36,9 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported privately to the community leaders responsible for enforcement at:
-
-**Conduct contact: not yet set.** The maintainer will add a private contact address here before the repository is made public. <!-- OWNER: supply a private conduct contact (an email address or form that only maintainers read). Do not reuse the security-vulnerability form for conduct reports. -->
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported privately to the community leaders responsible for enforcement by email to **maboe017@uottawa.ca**. Please put "BoundML Code of Conduct" in the subject. This address is for conduct reports; security vulnerabilities go through the separate route in [SECURITY.md](SECURITY.md).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

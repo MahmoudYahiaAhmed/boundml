@@ -1,6 +1,6 @@
 [package]
 name = "boundml-py"
-description = "Python bindings for BoundML (native extension module `boundml._native`)"
+description = "Python bindings for BoundML (native extension module `boundml_rs._native`)"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 boundml-artifact = { path = "../crates/boundml-artifact" }
 boundml-train = { path = "../crates/boundml-train" }
 numpy = "0.30"
-pyo3 = { version = "0.30", features = ["abi3-py39"] }
+pyo3 = { version = "0.30", features = ["abi3-py311"] }
 serde = "1"
 serde_json = "1"
 

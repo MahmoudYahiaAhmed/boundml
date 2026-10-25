@@ -13,11 +13,10 @@ BoundML is an early release (0.x). Only the latest released version receives fix
 Please **do not** open a public issue for security problems.
 
 Report privately through this repository's **Security → Report a vulnerability**
-form (GitHub private vulnerability reporting). Only maintainers can see these
-reports. **While the repository is private this form is not available:** GitHub offers
-it only on public repositories, and the maintainer will enable it when the repository
-is made public. Until then, report to the maintainer through a private channel you
-already share; do not open an issue. Include:
+form (GitHub private vulnerability reporting):
+<https://github.com/MahmoudYahiaAhmed/boundml/security/advisories/new>. Only
+maintainers can see these reports. (Code of Conduct reports use a separate address;
+see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).) Include:
 
 - the BoundML version (`boundml version`) and platform;
 - a minimal package, CSV or HTTP request that reproduces the problem;
