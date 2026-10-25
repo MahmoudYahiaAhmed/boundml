@@ -7,6 +7,12 @@ breaking changes; they are called out under **Breaking**.
 
 ## [Unreleased]
 
+### Fixed
+- CSV files with CRLF (Windows) line endings had every row's line number reported
+  one too low: in `boundml predict`'s `line` column and in data-error messages.
+  Found by running the 0.1.0 Windows release archive, whose example CSVs are CRLF.
+  Predictions were not affected.
+
 ## [0.1.0] — 2026-10-25 — early public beta
 
 First public release: CLI archives for Windows x86_64, Linux x86_64 (glibc 2.34+) and

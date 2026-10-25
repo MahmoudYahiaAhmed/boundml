@@ -327,3 +327,29 @@ fn preprocessor_apply_checks_lengths_in_every_build() {
         Err(ApplyError::Feature(0))
     );
 }
+
+/// Found by running the published Windows archive: its CSVs have CRLF line endings,
+/// and the csv crate reports a CRLF record's line one too low.
+#[test]
+fn line_numbers_are_file_lines_for_lf_and_crlf() {
+    let d = tempfile::tempdir().unwrap();
+    let s = schema(MissingPolicy::Reject, ExtraColumns::Ignore);
+    for (name, eol) in [("lf.csv", "\n"), ("crlf.csv", "\r\n")] {
+        let text = ["a,b,y", "1,2,no", "3,4,yes", "5,6,no"].join(eol) + eol;
+        let p = write(&d, name, &text);
+        let mut src = CsvSource::open(&p, &s, true).unwrap();
+        let mut row = RawRow::default();
+        let mut lines = Vec::new();
+        while src.read_row(&mut row).unwrap() {
+            lines.push(row.line);
+        }
+        assert_eq!(lines, vec![2, 3, 4], "{name}");
+        // Error messages name the same line.
+        let bad = ["a,b,y", "1,2,no", "x,4,yes"].join(eol) + eol;
+        let p = write(&d, &format!("bad-{name}"), &bad);
+        let mut src = CsvSource::open(&p, &s, true).unwrap();
+        assert!(src.read_row(&mut row).unwrap());
+        let e = src.read_row(&mut row).unwrap_err().to_string();
+        assert!(e.contains("line 3"), "{name}: {e}");
+    }
+}

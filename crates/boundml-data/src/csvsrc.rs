@@ -33,6 +33,24 @@ pub struct CsvSource {
     feat_idx: Vec<usize>,
     label_idx: Option<usize>,
     schema: Schema,
+    /// Added to the csv crate's record line: 1 for CRLF files, whose records it
+    /// reports one line too low (the `\n` of the previous `\r\n` is counted
+    /// only after the next record has started).
+    line_offset: u64,
+}
+
+/// Whether the file's first line ends with `\r\n`. Reads at most one record's worth.
+fn first_line_is_crlf(path: &Path) -> bool {
+    use std::io::{BufRead, BufReader, Read};
+    let Ok(file) = File::open(path) else {
+        return false;
+    };
+    let mut line = Vec::new();
+    let limit = MAX_RECORD_BYTES as u64 + 2;
+    match BufReader::new(file.take(limit)).read_until(b'\n', &mut line) {
+        Ok(_) => line.ends_with(b"\r\n"),
+        Err(_) => false,
+    }
 }
 
 impl CsvSource {
@@ -117,6 +135,7 @@ impl CsvSource {
             feat_idx,
             label_idx,
             schema: schema.clone(),
+            line_offset: u64::from(first_line_is_crlf(path)),
         })
     }
 
@@ -141,7 +160,7 @@ impl CsvSource {
             return Ok(false);
         }
         reset(&self.consumed);
-        let line = self.record.position().map_or(0, |p| p.line());
+        let line = self.record.position().map_or(0, |p| p.line()) + self.line_offset;
         if self.record.as_byte_record().as_slice().len() > MAX_RECORD_BYTES {
             return Err(DataError::Csv {
                 path: self.path.clone(),
